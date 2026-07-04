@@ -1,0 +1,21 @@
+# ── 파이썬 환경 / 캐시 ──
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── 비밀키 (절대 커밋 금지) ──
+.env
+
+# ── OS / 에디터 / AI 도구 임시 ──
+.DS_Store
+.claude/
+.understand-anything/
+.superpowers/
+
+# ── 대용량 미디어 ──
+# 시연영상은 데이콘에 직접 업로드. 깃에는 제외하되 제출 압축본엔 수동 포함.
+제출결과물/*.mp4
+*.mov
+*.mp3
+*.srt

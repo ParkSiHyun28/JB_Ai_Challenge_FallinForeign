@@ -1,0 +1,10 @@
+anthropic>=0.40.0
+# Gemini는 openai SDK의 OpenAI 호환 엔드포인트로 호출하므로 google 패키지가 필요 없다.
+openai>=1.40.0
+mcp>=1.0.0
+# HTML 프론트 + FastAPI 백엔드 구조. streamlit은 폐기.
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sse-starlette>=2.0.0
+pytest>=8.0.0
+python-dotenv>=1.0.0

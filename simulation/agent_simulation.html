@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My LifeRoad — 외국인 생애주기 멀티에이전트 시뮬레이션</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root {
+    /* web/styles.css 와 동일 팔레트 (네이비+화이트 미니멀) */
+    --navy:        #14264F;
+    --navy-mid:    #14264F;
+    --navy-soft:   #3A4E80;
+    --navy-light:  #3A4E80;
+    --bg:          #F6F7F9;
+    --card:        #FFFFFF;
+    --text:        #161B26;
+    --text-sub:    #515869;
+    --muted:       #8A91A0;
+    --line:        #E6E9EF;
+    /* 에이전트 구분색 (시뮬 고유 기능 — 네이비 계열로 절제) */
+    --vn:          #C84A4A;
+    --np:          #2F6DB0;
+    --docs:        #2F6DB0;
+    --asset:       #14264F;
+    --fraud:       #C84A4A;
+    --orch:        #3A4E80;
+    --ok:          #178A53;
+    --warn:        #B45309;
+    --danger:      #B91C1C;
+    --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ── 헤더 (web/ topbar 톤: 흰 배경 + 네이비 brand) ── */
+  header.top {
+    background: var(--card); color: var(--text); padding: 14px 28px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand .svc { font-size: 16px; font-weight: 700; color: var(--navy); letter-spacing: -.01em; }
+  .brand .svc small { color: var(--muted); font-weight: 500; font-size: 12.5px; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); letter-spacing: 0; }
+  .brand .tag { font-size: 11.5px; color: var(--muted); letter-spacing: 0.01em; font-weight: 500; }
+
+  .persona-toggle { display: flex; gap: 8px; margin-left: 8px; }
+  .ptab {
+    background: var(--bg); color: var(--text-sub); border: 1px solid var(--line);
+    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1.25;
+    border-radius: 10px;
+    display: flex; flex-direction: column; gap: 1px; min-width: 162px; transition: all 0.15s ease;
+  }
+  .ptab .pt-name { font-size: 13.5px; font-weight: 700; }
+  .ptab .pt-sub { font-size: 10.5px; opacity: 0.8; font-weight: 500; }
+  .ptab.vn.active { background: var(--vn); color: #fff; border-color: var(--vn); }
+  .ptab.np.active { background: var(--np); color: #fff; border-color: var(--np); }
+  .ptab:hover:not(.active) { background: #EEF1F6; border-color: var(--navy-soft); }
+
+  .controls { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .btn {
+    background: var(--navy); color: #fff; border: none; padding: 9px 18px;
+    font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0.01em;
+    font-family: inherit; border-radius: 10px; transition: filter 0.15s ease;
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .btn.ghost { background: var(--card); color: var(--navy); border: 1px solid var(--line); }
+  .btn.ghost:hover { filter: none; background: var(--bg); border-color: var(--navy-soft); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .speed { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .speed select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    padding: 7px 10px; font-size: 12px; font-family: inherit; border-radius: 8px; cursor: pointer;
+  }
+
+  /* ── 메인 3분할 ── */
+  .stage {
+    display: grid; grid-template-columns: 280px 1fr 360px; gap: 18px;
+    padding: 20px 28px 30px 28px; max-width: 1640px; margin: 0 auto; align-items: start;
+  }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .panel-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--line); display: flex;
+    align-items: center; gap: 8px; background: var(--card);
+  }
+  .panel-head .ph-t { font-size: 13px; font-weight: 700; color: var(--navy); letter-spacing: -.01em; }
+  .panel-head .ph-s { font-size: 11px; color: var(--muted); margin-left: auto; font-weight: 600; }
+
+  /* ── 좌: 에이전트 노드 ── */
+  .agents { padding: 16px 14px; display: flex; flex-direction: column; gap: 0; position: relative; }
+  .anode {
+    border: 1px solid var(--line); background: var(--bg); padding: 13px 14px; border-radius: 12px;
+    position: relative; transition: all 0.25s ease; z-index: 2;
+  }
+  .anode.orch { border-color: #D5DBE8; background: #EEF1F6; }
+  .alink { height: 20px; width: 2px; background: var(--line); margin: 0 auto; position: relative; z-index: 1; transition: background 0.25s ease; }
+  .alink.live { background: var(--navy-soft); box-shadow: 0 0 6px rgba(58,78,128,0.5); }
+  .anode .an-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+  .anode .an-ic {
+    width: 34px; height: 34px; display: grid; place-items: center; font-size: 18px;
+    background: #fff; border: 1px solid var(--line); border-radius: 9px; flex-shrink: 0;
+  }
+  .anode .an-name { font-size: 13.5px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+  .anode .an-en { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .anode .an-tag { font-size: 11px; color: var(--text-sub); line-height: 1.45; }
+  .anode .an-tools { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .anode .an-tool {
+    font-size: 9.5px; font-weight: 600; padding: 2px 6px; background: #EEF1F6;
+    color: var(--navy-soft); letter-spacing: 0.01em; border-radius: 5px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .anode .an-status {
+    position: absolute; top: 12px; right: 12px; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
+  }
+  .anode.active { border-color: var(--navy); border-width: 1.5px; box-shadow: 0 4px 18px rgba(20,38,79,0.16); background: #fff; }
+  .anode.active.docs { border-color: var(--docs); box-shadow: 0 4px 18px rgba(47,109,176,0.18); }
+  .anode.active.fraud { border-color: var(--fraud); box-shadow: 0 4px 18px rgba(200,74,74,0.18); }
+  .anode.active .an-status { color: var(--navy); }
+  .anode.active .an-tool.run { background: var(--navy); color: #fff; }
+  .anode.active .an-ic { animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+  /* ── 중: 메시지 버스 ── */
+  .bus { padding: 0; height: 620px; display: flex; flex-direction: column; }
+  .phase-strip { display: flex; border-bottom: 1px solid var(--line); }
+  .phase-pill {
+    flex: 1; text-align: center; padding: 9px 4px; font-size: 11px; font-weight: 700;
+    color: var(--muted); background: var(--bg); border-right: 1px solid var(--line);
+    letter-spacing: 0.01em; position: relative; transition: all 0.25s ease;
+  }
+  .phase-pill:last-child { border-right: none; }
+  .phase-pill small { display: block; font-size: 9px; font-weight: 600; opacity: 0.7; margin-top: 1px; letter-spacing: 0.06em; }
+  .phase-pill.done { color: var(--navy-soft); background: #EEF1F6; }
+  .phase-pill.cur { color: #fff; background: var(--navy); }
+  .phase-pill.cur small { opacity: 0.85; }
+
+  .bus-feed { flex: 1; overflow-y: auto; padding: 16px 18px 22px 18px; scroll-behavior: smooth; }
+  .bus-feed::-webkit-scrollbar { width: 6px; }
+  .bus-feed::-webkit-scrollbar-thumb { background: rgba(20,38,79,.16); border-radius: 999px; }
+  .bus-feed::-webkit-scrollbar-track { background: transparent; }
+  .bus-empty { color: var(--text-sub); font-size: 13px; text-align: center; padding: 80px 20px; line-height: 1.7; }
+  .bus-empty .be-ic { font-size: 34px; display: block; margin-bottom: 12px; }
+
+  .msg { display: flex; gap: 11px; margin-bottom: 14px; animation: slideIn 0.4s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .msg .m-rail { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 38px; }
+  .msg .m-dot {
+    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 16px; background: #fff; border: 2px solid var(--line); flex-shrink: 0;
+  }
+  .msg .m-dot.docs { border-color: var(--docs); }
+  .msg .m-dot.asset { border-color: var(--asset); }
+  .msg .m-dot.fraud { border-color: var(--fraud); }
+  .msg .m-dot.orchestrator { border-color: var(--orch); }
+  .msg .m-dot.user { border-color: var(--navy-light); background: #F0F3F9; }
+  .msg .m-line { width: 2px; flex: 1; background: var(--line); margin-top: 2px; min-height: 6px; }
+  .msg .m-body { flex: 1; padding-bottom: 2px; }
+  .msg .m-head { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; flex-wrap: wrap; }
+  .msg .m-actor { font-size: 12px; font-weight: 700; color: var(--navy); }
+  .msg .m-arrow { font-size: 11px; color: var(--text-sub); }
+  .msg .m-to { font-size: 11.5px; font-weight: 600; color: var(--navy-mid); }
+  .msg .m-kind {
+    font-size: 9px; font-weight: 700; padding: 2px 7px; letter-spacing: 0.05em;
+    text-transform: uppercase; border-radius: 2px; margin-left: 2px;
+  }
+  .m-kind.trigger { background: #EDE7F6; color: #5B2C82; }
+  .m-kind.message { background: #E1ECF6; color: #1B4F72; }
+  .m-kind.handoff { background: #FEF3C7; color: #B45309; }
+  .m-kind.tool { background: var(--navy); color: #fff; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .m-kind.result { background: #E6F5EC; color: #178A53; }
+  .msg .m-title { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.4; margin-bottom: 3px; }
+  .msg .m-detail { font-size: 12px; color: var(--text-sub); line-height: 1.55; }
+  .msg .m-toolname {
+    display: inline-block; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px;
+    background: #EEF1F6; color: var(--navy-soft); padding: 1px 7px; margin-top: 4px; border-radius: 5px;
+  }
+  .msg.is-tool .m-title { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+
+  /* ── 우: 사용자 폰 ── */
+  .phone-wrap { padding: 18px 16px 22px 16px; display: flex; flex-direction: column; align-items: center; }
+  .phone {
+    width: 300px; background: #0A0D14; border-radius: 38px; padding: 11px;
+    box-shadow: 0 8px 24px rgba(11,18,32,.16), 0 40px 80px -28px rgba(11,18,32,.4);
+    border: 1px solid #20242C; position: relative;
+  }
+  .phone .notch {
+    position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    width: 96px; height: 26px; background: #000; border-radius: 16px; z-index: 5;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 10px;
+  }
+  .phone .notch::after {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #2a2f45, #000 70%);
+    box-shadow: inset 0 0 0 1px rgba(80,90,120,.5);
+  }
+  .phone .screen {
+    background: var(--bg); border-radius: 28px;
+    min-height: 480px; max-height: 480px; overflow-y: auto; padding: 44px 12px 18px 12px;
+  }
+  .phone .screen::-webkit-scrollbar { width: 5px; }
+  .phone .screen::-webkit-scrollbar-thumb { background: rgba(20,38,79,.16); border-radius: 999px; }
+  .phone .app-bar { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; padding: 0 2px; }
+  .phone .app-bar .ab-logo { font-size: 14px; font-weight: 700; color: var(--navy); }
+  .phone .app-bar .ab-sub { font-size: 9.5px; color: var(--muted); margin-left: auto; font-weight: 600; }
+  .phone .phantom { color: var(--muted); font-size: 11.5px; text-align: center; padding: 60px 14px; line-height: 1.7; }
+
+  .pushcard {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; margin-bottom: 10px;
+    box-shadow: 0 3px 12px rgba(11,18,32,0.08); animation: cardPop 0.45s cubic-bezier(.2,.8,.3,1.2);
+  }
+  @keyframes cardPop { from { opacity: 0; transform: scale(0.9) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .pushcard .pc-top { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+  .pushcard .pc-ic { font-size: 17px; }
+  .pushcard .pc-head { font-size: 12.5px; font-weight: 700; color: var(--navy); line-height: 1.25; flex: 1; }
+  .pushcard .pc-body { font-size: 11.5px; color: var(--text-sub); line-height: 1.5; }
+  .pushcard .pc-metric {
+    display: inline-block; margin-top: 7px; font-size: 10.5px; font-weight: 700;
+    background: #EEF1F6; color: var(--navy-soft); padding: 2px 8px; border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .pushcard .pc-from { font-size: 9px; color: var(--muted); margin-top: 6px; letter-spacing: 0.02em; }
+
+  /* ── 하단 진행 + 설명 ── */
+  .ticker {
+    max-width: 1640px; margin: 0 auto 8px auto; padding: 0 28px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .progressbar { flex: 1; height: 6px; background: var(--line); position: relative; overflow: hidden; border-radius: 999px; }
+  .progressbar .pf { height: 100%; width: 0%; background: linear-gradient(90deg, var(--navy-soft), var(--navy)); transition: width 0.4s ease; border-radius: 999px; }
+  .ticker .pct { font-size: 11px; color: var(--muted); font-weight: 600; min-width: 84px; text-align: right; }
+
+  .legend {
+    max-width: 1640px; margin: 14px auto 0 auto; padding: 14px 28px 0 28px;
+    display: flex; gap: 22px; flex-wrap: wrap; border-top: 1px solid var(--line);
+    font-size: 11.5px; color: var(--text-sub);
+  }
+  .legend .lg { display: flex; align-items: center; gap: 6px; }
+  .legend .lg b { color: var(--navy); font-weight: 700; }
+  .legend .sw { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+  .footer-note {
+    max-width: 1640px; margin: 10px auto 30px auto; padding: 0 28px;
+    font-size: 11px; color: var(--text-sub); line-height: 1.7;
+  }
+  .footer-note b { color: var(--navy); }
+
+  .loading-warn {
+    max-width: 1640px; margin: 16px auto; padding: 14px 22px; background: #FEF3C7;
+    border-left: 3px solid var(--warn); color: #92600C; font-size: 13px; line-height: 1.6;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="svc">🛣️ My LifeRoad <small>멀티에이전트 시뮬레이션</small></div>
+    <div class="tag">외국인 입국부터 출국까지 전 과정을 조율하는 AI 에이전트</div>
+  </div>
+
+  <div class="persona-toggle" id="personaToggle">
+    <button class="ptab vn active" data-persona="minh">
+      <span class="pt-name">🇻🇳 응웬 반 민</span>
+      <span class="pt-sub">베트남 E-9 근로자 — 출국 1년 전</span>
+    </button>
+    <button class="ptab np" data-persona="suman">
+      <span class="pt-name">🇳🇵 수만 라이</span>
+      <span class="pt-sub">네팔 D-2 유학생 — 졸업 진로 전</span>
+    </button>
+  </div>
+
+  <div class="controls">
+    <div class="speed">
+      속도
+      <select id="speedSel">
+        <option value="2200">느리게</option>
+        <option value="1400" selected>보통</option>
+        <option value="700">빠르게</option>
+      </select>
+    </div>
+    <button class="btn ghost" id="stepBtn">▷ 한 단계</button>
+    <button class="btn" id="playBtn">▶ 자동 재생</button>
+    <button class="btn ghost" id="resetBtn">↺ 처음</button>
+  </div>
+</header>
+
+<div class="stage">
+  <!-- 좌: 에이전트 노드 -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="ph-t">에이전트 오케스트라</span>
+      <span class="ph-s">A2A 협업</span>
+    </div>
+    <div class="agents" id="agentRail"><!-- JS 렌더 --></div>
+  </div>
+
+  <!-- 중: 메시지 버스 -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="ph-t">에이전트 메시지 버스</span>
+      <span class="ph-s" id="busStat">대기 중</span>
+    </div>
+    <div class="bus">
+      <div class="phase-strip" id="phaseStrip"><!-- JS 렌더 --></div>
+      <div class="bus-feed" id="busFeed">
+        <div class="bus-empty">
+          <span class="be-ic">🛰️</span>
+          재생을 누르면 오케스트레이터가 세 에이전트를 깨워<br>페르소나의 생애주기 업무를 처리합니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 우: 사용자 폰 -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="ph-t">사용자 화면</span>
+      <span class="ph-s">결과 푸시</span>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen" id="phoneScreen">
+          <div class="app-bar">
+            <span class="ab-logo">My LifeRoad</span>
+            <span class="ab-sub" id="phoneLang">KO</span>
+          </div>
+          <div class="phantom" id="phonePhantom">
+            에이전트가 처리한 결과가<br>여기에 카드로 도착합니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ticker">
+  <div class="progressbar"><div class="pf" id="progFill"></div></div>
+  <div class="pct" id="progPct">0 / 0 단계</div>
+</div>
+
+<div class="legend">
+  <div class="lg"><span class="sw" style="border-color:var(--orch)"></span><b>오케스트레이터</b> 전체 조율</div>
+  <div class="lg"><span class="sw" style="border-color:var(--docs)"></span><b>서류</b> 인식과 자동작성</div>
+  <div class="lg"><span class="sw" style="border-color:var(--asset)"></span><b>자산</b> 마감추적과 대리처리</div>
+  <div class="lg"><span class="sw" style="border-color:var(--fraud)"></span><b>사기탐지</b> 실시간 차단</div>
+  <div class="lg" style="opacity:0.5">|</div>
+  <div class="lg"><span class="m-kind trigger" style="margin:0">TRIGGER</span> 능동 감지</div>
+  <div class="lg"><span class="m-kind handoff" style="margin:0">HANDOFF</span> 에이전트 인계</div>
+  <div class="lg"><span class="m-kind tool" style="margin:0">TOOL</span> 도구 실행</div>
+  <div class="lg"><span class="m-kind result" style="margin:0">RESULT</span> 사용자 전달</div>
+</div>
+
+<div class="footer-note" id="footerNote"></div>
+
+<!-- 에이전트 모듈 (teammate 제작) -->
+<script src="sim_modules/mod_docs.js"></script>
+<script src="sim_modules/mod_asset.js"></script>
+<script src="sim_modules/mod_fraud.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── 정적 메타 ──
+  var AGENT_ORDER = ["orchestrator", "docs", "asset", "fraud"];
+  var AGENT_META = {
+    orchestrator: { name: "오케스트레이터", nameEn: "Orchestrator", icon: "🧭", tagline: "사용자 의도를 읽고 세 에이전트에 업무를 배분", tools: [{name:"route_intent",desc:""},{name:"daily_scan",desc:""}], cls: "orch" },
+  };
+  var PHASES = [
+    { key: "arrival", labelMinh: "입국과 첫 정착", labelSuman: "입국과 첫 정착", sub: "ARRIVAL" },
+    { key: "settle", labelMinh: "정착 안정화", labelSuman: "정착 안정화", sub: "SETTLE" },
+    { key: "expand", labelMinh: "체류 확장", labelSuman: "체류 확장", sub: "EXPAND" },
+    { key: "exit", labelMinh: "귀국과 사후", labelSuman: "졸업과 전환", sub: "EXIT" },
+  ];
+  var PERSONA = {
+    minh: { flag: "🇻🇳", name: "응웬 반 민", lang: "VI", stay: "2022.3 입국 → 2027.1 출국 예정" },
+    suman: { flag: "🇳🇵", name: "수만 라이", lang: "NE", stay: "2023.3 입국 → 2027.2 졸업 예정" },
+  };
+
+  // ── 모듈 수집 ──
+  var MODS = window.LIFEROAD_MODULES || {};
+  var loadedParts = ["docs", "asset", "fraud"].filter(function (p) { return MODS[p]; });
+
+  // 모듈에서 에이전트 메타 채우기
+  ["docs", "asset", "fraud"].forEach(function (p) {
+    if (MODS[p]) {
+      AGENT_META[p] = {
+        name: MODS[p].name, nameEn: MODS[p].nameEn, icon: MODS[p].icon,
+        tagline: MODS[p].tagline, tools: MODS[p].tools || [], cls: p,
+      };
+    } else {
+      // 모듈 미로드 시 플레이스홀더
+      AGENT_META[p] = { name: p + " 에이전트", nameEn: p, icon: "🔁", tagline: "(모듈 로딩 대기)", tools: [], cls: p };
+    }
+  });
+
+  // ── 상태 ──
+  var state = { persona: "minh", steps: [], idx: 0, playing: false, timer: null, speed: 1400 };
+
+  function buildSteps(persona) {
+    var all = [];
+    ["docs", "asset", "fraud"].forEach(function (p) {
+      if (MODS[p] && MODS[p].steps && MODS[p].steps[persona]) {
+        MODS[p].steps[persona].forEach(function (s) {
+          var c = Object.assign({}, s);
+          c._src = p;
+          all.push(c);
+        });
+      }
+    });
+    all.sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+    return all;
+  }
+
+  // ── 렌더: 에이전트 노드 ──
+  function renderAgents() {
+    var rail = document.getElementById("agentRail");
+    rail.innerHTML = "";
+    AGENT_ORDER.forEach(function (id, i) {
+      var m = AGENT_META[id];
+      if (i > 0) {
+        var lk = document.createElement("div");
+        lk.className = "alink"; lk.id = "link-" + id;
+        rail.appendChild(lk);
+      }
+      var n = document.createElement("div");
+      n.className = "anode " + (m.cls || id);
+      n.id = "node-" + id;
+      var tools = (m.tools || []).map(function (t) {
+        return '<span class="an-tool" data-tool="' + t.name + '">' + t.name + '</span>';
+      }).join("");
+      n.innerHTML =
+        '<div class="an-status">idle</div>' +
+        '<div class="an-top">' +
+          '<div class="an-ic">' + m.icon + '</div>' +
+          '<div><div class="an-name">' + m.name + '</div>' +
+          '<div class="an-en">' + m.nameEn + '</div></div>' +
+        '</div>' +
+        '<div class="an-tag">' + m.tagline + '</div>' +
+        (tools ? '<div class="an-tools">' + tools + '</div>' : '');
+      rail.appendChild(n);
+    });
+  }
+
+  // ── 렌더: phase strip ──
+  function renderPhaseStrip() {
+    var strip = document.getElementById("phaseStrip");
+    strip.innerHTML = "";
+    PHASES.forEach(function (ph) {
+      var el = document.createElement("div");
+      el.className = "phase-pill"; el.id = "phase-" + ph.key;
+      var label = state.persona === "minh" ? ph.labelMinh : ph.labelSuman;
+      el.innerHTML = label + "<small>" + ph.sub + "</small>";
+      strip.appendChild(el);
+    });
+  }
+
+  function setActiveAgent(id) {
+    AGENT_ORDER.forEach(function (a) {
+      var node = document.getElementById("node-" + a);
+      if (!node) return;
+      var st = node.querySelector(".an-status");
+      if (a === id) { node.classList.add("active"); if (st) st.textContent = "active"; }
+      else { node.classList.remove("active"); if (st) st.textContent = "idle"; }
+      node.querySelectorAll(".an-tool").forEach(function (t) { t.classList.remove("run"); });
+    });
+    // 연결선: orchestrator→해당 노드 경로 점등
+    AGENT_ORDER.forEach(function (a) {
+      var lk = document.getElementById("link-" + a);
+      if (!lk) return;
+      var order = AGENT_ORDER.indexOf(id);
+      var pos = AGENT_ORDER.indexOf(a);
+      if (id !== "orchestrator" && id !== "user" && pos > 0 && pos <= order) lk.classList.add("live");
+      else lk.classList.remove("live");
+    });
+  }
+
+  function highlightTool(agentId, toolName) {
+    var node = document.getElementById("node-" + agentId);
+    if (!node) return;
+    var t = node.querySelector('.an-tool[data-tool="' + toolName + '"]');
+    if (t) t.classList.add("run");
+  }
+
+  function updatePhaseStrip(curPhase) {
+    var reached = false;
+    for (var i = PHASES.length - 1; i >= 0; i--) {
+      var key = PHASES[i].key;
+      var el = document.getElementById("phase-" + key);
+      if (!el) continue;
+      el.classList.remove("cur", "done");
+    }
+    var curIdx = PHASES.findIndex(function (p) { return p.key === curPhase; });
+    PHASES.forEach(function (p, i) {
+      var el = document.getElementById("phase-" + p.key);
+      if (!el) return;
+      if (i < curIdx) el.classList.add("done");
+      else if (i === curIdx) el.classList.add("cur");
+    });
+  }
+
+  var KIND_LABEL = { trigger: "감지", message: "메시지", handoff: "인계", tool: "도구", result: "전달" };
+
+  function emitStep(step) {
+    var feed = document.getElementById("busFeed");
+    var empty = feed.querySelector(".bus-empty");
+    if (empty) empty.remove();
+
+    var actor = step.actor || "orchestrator";
+    var toId = step.to;
+    setActiveAgent(actor === "user" ? "orchestrator" : actor);
+    if (step.kind === "tool" && step.tool) highlightTool(actor, step.tool);
+    if (step.phase) updatePhaseStrip(step.phase);
+
+    var actorName = (AGENT_META[actor] && AGENT_META[actor].name) || (actor === "user" ? "사용자" : actor);
+    var actorIcon = (AGENT_META[actor] && AGENT_META[actor].icon) || (actor === "user" ? "🙂" : "🤖");
+    var toName = toId && AGENT_META[toId] ? AGENT_META[toId].name : (toId === "user" ? "사용자" : null);
+
+    var div = document.createElement("div");
+    div.className = "msg" + (step.kind === "tool" ? " is-tool" : "");
+    var head =
+      '<span class="m-actor">' + actorName + '</span>' +
+      (toName && toId !== actor ? '<span class="m-arrow">→</span><span class="m-to">' + toName + '</span>' : '') +
+      '<span class="m-kind ' + step.kind + '">' + (KIND_LABEL[step.kind] || step.kind) + '</span>';
+    var inner =
+      '<div class="m-rail">' +
+        '<div class="m-dot ' + actor + '">' + actorIcon + '</div>' +
+        '<div class="m-line"></div>' +
+      '</div>' +
+      '<div class="m-body">' +
+        '<div class="m-head">' + head + '</div>' +
+        '<div class="m-title">' + (step.title || "") + '</div>' +
+        (step.detail ? '<div class="m-detail">' + step.detail + '</div>' : '') +
+        (step.kind === "tool" && step.tool ? '<span class="m-toolname">' + step.tool + '()</span>' : '') +
+      '</div>';
+    div.innerHTML = inner;
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+
+    if (step.kind === "result" && step.card) pushPhoneCard(step.card, actorName);
+  }
+
+  function pushPhoneCard(card, fromName) {
+    var screen = document.getElementById("phoneScreen");
+    var phantom = document.getElementById("phonePhantom");
+    if (phantom) phantom.style.display = "none";
+    var c = document.createElement("div");
+    c.className = "pushcard";
+    c.innerHTML =
+      '<div class="pc-top"><span class="pc-ic">' + (card.icon || "🔔") + '</span>' +
+      '<span class="pc-head">' + (card.head || "") + '</span></div>' +
+      '<div class="pc-body">' + (card.body || "") + '</div>' +
+      (card.metric ? '<span class="pc-metric">' + card.metric + '</span>' : '') +
+      '<div class="pc-from">' + (fromName || "에이전트") + ' 처리</div>';
+    screen.appendChild(c);
+    screen.scrollTop = screen.scrollHeight;
+  }
+
+  function updateProgress() {
+    var total = state.steps.length;
+    var pct = total ? Math.round((state.idx / total) * 100) : 0;
+    document.getElementById("progFill").style.width = pct + "%";
+    document.getElementById("progPct").textContent = state.idx + " / " + total + " 단계";
+    document.getElementById("busStat").textContent =
+      state.idx === 0 ? "대기 중" : (state.idx >= total ? "완료" : "처리 중 " + pct + "%");
+  }
+
+  function doStep() {
+    if (state.idx >= state.steps.length) { stopPlay(); return false; }
+    emitStep(state.steps[state.idx]);
+    state.idx++;
+    updateProgress();
+    if (state.idx >= state.steps.length) {
+      stopPlay();
+      setTimeout(function () { AGENT_ORDER.forEach(function (a) { var n = document.getElementById("node-" + a); if (n) { n.classList.remove("active"); var s = n.querySelector(".an-status"); if (s) s.textContent = "idle"; } }); }, 600);
+    }
+    return true;
+  }
+
+  function startPlay() {
+    if (state.playing) return;
+    if (state.idx >= state.steps.length) resetSim();
+    state.playing = true;
+    document.getElementById("playBtn").textContent = "⏸ 일시정지";
+    tick();
+  }
+  function tick() {
+    if (!state.playing) return;
+    var ok = doStep();
+    if (ok && state.playing) state.timer = setTimeout(tick, state.speed);
+  }
+  function stopPlay() {
+    state.playing = false;
+    if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+    document.getElementById("playBtn").textContent = "▶ 자동 재생";
+  }
+
+  function resetSim() {
+    stopPlay();
+    state.idx = 0;
+    state.steps = buildSteps(state.persona);
+    var feed = document.getElementById("busFeed");
+    feed.innerHTML = '<div class="bus-empty"><span class="be-ic">🛰️</span>재생을 누르면 오케스트레이터가 세 에이전트를 깨워<br>페르소나의 생애주기 업무를 처리합니다.</div>';
+    var screen = document.getElementById("phoneScreen");
+    screen.querySelectorAll(".pushcard").forEach(function (e) { e.remove(); });
+    var phantom = document.getElementById("phonePhantom");
+    if (phantom) phantom.style.display = "";
+    document.getElementById("phoneLang").textContent = PERSONA[state.persona].lang;
+    PHASES.forEach(function (p) { var el = document.getElementById("phase-" + p.key); if (el) el.classList.remove("cur", "done"); });
+    AGENT_ORDER.forEach(function (a) { var n = document.getElementById("node-" + a); if (n) { n.classList.remove("active"); var s = n.querySelector(".an-status"); if (s) s.textContent = "idle"; } var lk = document.getElementById("link-" + a); if (lk) lk.classList.remove("live"); });
+    updateProgress();
+  }
+
+  function switchPersona(p) {
+    if (state.persona === p) return;
+    state.persona = p;
+    document.querySelectorAll(".ptab").forEach(function (b) { b.classList.toggle("active", b.dataset.persona === p); });
+    renderPhaseStrip();
+    resetSim();
+  }
+
+  // ── 초기화 ──
+  function init() {
+    renderAgents();
+    renderPhaseStrip();
+    state.steps = buildSteps(state.persona);
+    updateProgress();
+    document.getElementById("phoneLang").textContent = PERSONA[state.persona].lang;
+
+    document.getElementById("playBtn").onclick = function () { state.playing ? stopPlay() : startPlay(); };
+    document.getElementById("stepBtn").onclick = function () { stopPlay(); if (state.idx >= state.steps.length) resetSim(); doStep(); };
+    document.getElementById("resetBtn").onclick = resetSim;
+    document.getElementById("speedSel").onchange = function (e) { state.speed = parseInt(e.target.value, 10); };
+    document.getElementById("personaToggle").onclick = function (e) {
+      var b = e.target.closest(".ptab"); if (b) switchPersona(b.dataset.persona);
+    };
+
+    // 모듈 로딩 상태 안내
+    var note = document.getElementById("footerNote");
+    if (loadedParts.length < 3) {
+      var warn = document.createElement("div");
+      warn.className = "loading-warn";
+      warn.innerHTML = "⚠ 에이전트 모듈 " + loadedParts.length + "/3 로드됨. 미로드 파트: " +
+        ["docs", "asset", "fraud"].filter(function (p) { return !MODS[p]; }).join(", ") +
+        ". 해당 sim_modules/mod_*.js 파일이 아직 준비되지 않았습니다.";
+      document.querySelector(".stage").insertAdjacentElement("beforebegin", warn);
+    }
+    note.innerHTML =
+      "<b>시뮬레이션 설명</b> &nbsp; 이 화면은 My LifeRoad 오케스트레이터가 서류, 자산, 사기탐지 세 에이전트를 깨워 " +
+      "두 페르소나의 입국부터 출국까지 전 과정을 능동적으로 처리하는 모습을 재생합니다. " +
+      "에이전트는 사용자가 묻기 전에 마감과 위험을 먼저 감지(TRIGGER)하고, 서로 업무를 인계(HANDOFF)하며, 도구를 실행(TOOL)해 결과를 사용자에게 전달(RESULT)합니다. " +
+      "데이터 근거는 노션 제안서의 사례조사와 사기 사례정리와 서류 행정 사례정리에서 가져왔습니다.";
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+</script>
+</body>
+</html>

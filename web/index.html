@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LifeRoad AI Agent 시연</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stage">
+
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">LR</div>
+        <div class="brand-name"><b>LifeRoad</b> AI Agent</div>
+        <div class="brand-sub">외국인 정착 도우미 시연 데모</div>
+      </div>
+      <div class="sync-pill" id="sync-pill"><span class="dot"></span><span id="sync-text">앱 준비 중</span></div>
+    </div>
+
+    <div class="layout">
+      <div class="left-col">
+        <div class="controls">
+          <div class="ctrl-group">
+            <div class="ctrl-label">페르소나</div>
+            <select id="persona-select">
+              <option value="minh">베트남 / 응웬 반 민 (E-9)</option>
+              <option value="suman">네팔 / 수만 라이 (D-2)</option>
+            </select>
+          </div>
+          <div class="ctrl-divider"></div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">답변 언어</div>
+            <select id="lang-select">
+              <option value="auto">자동 감지 (질문 언어 따라감)</option>
+              <option value="ko">한국어</option>
+              <option value="en">영어</option>
+              <option value="vi">베트남어</option>
+              <option value="ne">네팔어</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="persona" id="persona-card"></div>
+      </div>
+
+      <div class="right-col">
+        <div class="phone-wrap">
+          <div class="phone">
+            <div class="island"><span class="cam"></span></div>
+            <div class="screen">
+              <div class="chat-app">
+                <div class="chat-header">대화</div>
+                <div class="chat-scroll" id="chat-scroll"></div>
+                <div class="chat-input-bar">
+                  <input
+                    id="chat-input"
+                    type="text"
+                    placeholder="질문을 입력하세요"
+                    autocomplete="off" />
+                  <button class="send-btn" id="send-btn" aria-label="전송">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
