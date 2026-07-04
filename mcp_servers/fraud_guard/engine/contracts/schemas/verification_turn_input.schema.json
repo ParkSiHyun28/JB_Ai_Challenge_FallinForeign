@@ -1,0 +1,27 @@
+{
+  "description": "콘솔/오케스트레이터가 고객 답변 1턴을 제출할 때의 입력 계약.",
+  "properties": {
+    "channel": {
+      "default": "simulated_chat",
+      "title": "Channel",
+      "type": "string"
+    },
+    "customer_reply": {
+      "title": "Customer Reply",
+      "type": "string"
+    },
+    "operator_id": {
+      "title": "Operator Id",
+      "type": "string"
+    },
+    "selected_question_id": {
+      "title": "Selected Question Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_reply"
+  ],
+  "title": "VerificationTurnInput",
+  "type": "object"
+}

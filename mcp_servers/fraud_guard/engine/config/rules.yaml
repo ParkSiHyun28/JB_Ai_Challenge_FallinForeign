@@ -1,0 +1,48 @@
+# config/rules.yaml — L1 RuleLayer 페널티·임계값
+# =============================================================================
+# TASK_02 에서 core/rules.py(RuleLayer)가 로드한다. (현재는 스테이징 — 아직 소비자 없음)
+# 룰의 '존재'는 실제 사건 패턴(대포통장·피싱 적발)으로 정당화하나,
+# 페널티 '수치'는 전부 [임의] — 라벨 확보 후 ablation/로지스틱 회귀로 보정 예정
+# (IMPLEMENTATION.md 3장 L1, 4장).
+#
+# 출처:
+#   - 금융감독원·경찰청 보이스피싱 피해 통계: 1인 평균피해 2,500만→5,000만원↑,
+#     '잔액 한도끝까지 일괄 다회 고액 인출' 패턴 → high_amount/rapid_passthrough 근거.
+# =============================================================================
+
+# --- 룰 공통 임계 ---
+dday_window_days: 30           # [임의] 체류만료 D-day 양도 가중 시작 구간
+high_amount_krw: 5000000       # [STAT 근거] 고액 기준 500만원
+                               #   금감원: 피싱 1회 고액 인출 ~880만원 > 500만 → 포착,
+                               #   평균 피해 5,000만원은 다회 인출 누적치.
+night_hours: [0, 1, 2, 3, 4]   # [임의] 야간 구간(시)
+
+# --- 룰별 페널티 (OR 앙상블에서 각자 임계와 비교; 누적 점수는 참고) ---
+rules:
+  corridor_mismatch:
+    penalty: 0.35              # [임의]
+    when: "channel == remittance AND counterparty_country != home_country"
+    rationale: "정상 corridor(본국 송금) 이탈 — 제3국 수취(시나리오 A)"
+  exit_drawdown:
+    penalty: 0.45              # [임의]
+    drawdown_min: 0.8          # [임의] 잔액 인출률 하한
+    when: "0 <= days_to_residency_end <= dday_window_days AND balance_drawdown_ratio >= drawdown_min"
+    rationale: "출국 임박 + 잔액 일괄 인출 = 계좌양도(시나리오 A)"
+  new_device_high_amount:
+    penalty: 0.30              # [임의]
+    when: "is_new_device AND amount >= high_amount_krw"
+    rationale: "신규기기 + 고액 = 계좌 탈취/양도 신호"
+  rapid_passthrough:
+    penalty: 0.25              # [임의]
+    velocity_min: 5            # [임의] 24h 거래수 하한
+    drawdown_min: 0.9          # [임의] 잔액 인출률 하한
+    when: "tx_velocity_24h >= velocity_min AND balance_drawdown_ratio >= drawdown_min"
+    rationale: "입금 직후 즉시 전액 이체 = 인출책/통장대여·피싱 다회 인출(금감원 패턴)"
+  night_remittance:
+    penalty: 0.10              # [임의]
+    when: "hour in night_hours AND channel == remittance"
+    rationale: "야간 해외송금"
+  residency_overstayed:
+    penalty: 0.40              # [임의] 단독 review급, 타 신호와 결합 시 soft_block
+    when: "days_to_residency_end < 0  (이미 만료=불법체류 의심)"
+    rationale: "체류만료 후 금융활동 = 계좌양도/대여 고위험(P1-5: D-0 클립이 가리던 신호)"

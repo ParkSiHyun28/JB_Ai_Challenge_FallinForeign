@@ -40,14 +40,14 @@ TOOL_SCHEMAS = {
   },
 }
 ```
-persona_id 프로퍼티는 enum ["minh", "suman"]로 고정한다.
+persona_id 프로퍼티는 enum을 두지 않는다(동적 페르소나 지원). string 타입으로 두고 사용 규칙을 description에 적는다. `mcp_servers/asset/schemas.py`의 `_PERSONA_PROP`을 그대로 복제해 쓴다.
 
 ## 공용 자원
 - 페르소나: `from shared.personas import get_persona, PERSONAS`. 새 페르소나 필드가 필요하면 PR로 협의 후 추가한다. 임의 수정 금지.
 - 시스템 프롬프트: `from shared.system_prompt import build_system_prompt`. 부문별로 바꾸지 않는다.
 
 ## 통합
-`shared/registry.py`가 `mcp_servers/` 아래 모든 부문을 자동 발견해 병합한다. 규약을 지킨 폴더를 `mcp_servers/<영문부문명>/`에 넣으면 앱 재시작 시 자동 연결된다. `frontend/app.py`나 `shared/registry.py`에 import를 손으로 추가할 필요가 없다. tool 이름이 다른 부문과 겹치면 즉시 에러가 난다.
+`shared/registry.py`가 `mcp_servers/` 아래 모든 부문을 자동 발견해 병합한다. 규약을 지킨 폴더를 `mcp_servers/<영문부문명>/`에 넣으면 앱 재시작 시 자동 연결된다. `backend/`나 `shared/registry.py`에 import를 손으로 추가할 필요가 없다. tool 이름이 다른 부문과 겹치면 즉시 에러가 난다.
 
 ## 가드레일 (규약 위반 자동 차단)
 repo 루트 `tests/test_contract.py`가 이 규약을 기계적으로 검사한다. 페르소나 핵심 값 동결과 모든 부문 tool의 출력 4키 형식을 자동으로 확인한다. 부문을 새로 추가하면 그 부문 tool도 자동 검사 대상이 된다. `python -m pytest`로 돌려 통과하는지 확인한다. 이 파일은 수정하지 않는다. 위반 시 테스트가 아니라 코드를 고친다.

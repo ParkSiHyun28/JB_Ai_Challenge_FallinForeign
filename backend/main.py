@@ -8,36 +8,46 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import queue
-import sys
+import re
 import threading
 
 from dotenv import load_dotenv
 
 # 키 로딩은 반드시 llm_provider import 전에 끝낸다(코어가 import 시 키를 동결).
+# 순서: repo 안 .env 먼저(팀원 방식 유지) → 없으면 외부 ~/.liferoad/.env 보충.
+# load_dotenv는 이미 설정된 변수를 덮지 않으므로 repo .env가 우선한다.
 load_dotenv()
-from shared.secrets_bridge import bridge_secrets
+load_dotenv(os.path.expanduser("~/.liferoad/.env"))
 
-bridge_secrets()
-
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
 
 from shared.personas import PERSONAS
 from shared.system_prompt import LANGUAGES, detect_lang, build_system_prompt
-from frontend.llm_provider import run_chat_stream, strip_emoji
+from shared.llm_provider import run_chat_stream, strip_emoji
 from backend import core
+from backend.fraud_api import router as fraud_router
 from backend.schemas import ChatRequest, IntroResponse, PersonaCard
 
+logger = logging.getLogger("liferoad")
+
 app = FastAPI(title="LifeRoad AI Agent API")
+app.include_router(fraud_router)  # 사기탐지 관제 API(/fraud/*) - 콘솔(8002)과 폰이 사용
 
 # CORS: 프론트(Cloudflare Pages)와 백엔드가 다른 오리진이라 필수.
 # 로컬은 http.server(8000), 배포는 *.pages.dev. 환경변수로 추가 오리진을 받는다.
 _origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:8002",   # 사기탐지 관제 콘솔(fraud_console)
+    "http://127.0.0.1:8002",
+    "http://localhost:8010",   # 로컬 프리뷰 검증용
+    "http://127.0.0.1:8010",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
 ]
@@ -72,6 +82,35 @@ def personas():
     return [core.persona_card(PERSONAS[pid]) for pid in ("minh", "suman")]
 
 
+# ---------------------------------------------------------------------------
+# 서류 PDF 다운로드
+# ---------------------------------------------------------------------------
+# form_autofill이 생성한 PDF만 서빙한다. 파일명 허용 문자를 제한하고
+# 실제 경로가 output 폴더 안인지 다시 확인해 경로 탈출을 이중 차단한다.
+
+_DOWNLOAD_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+\.pdf$")
+
+
+@app.get("/download/{filename}")
+def download(filename: str):
+    """채팅 카드의 다운로드 단추가 호출한다. 생성된 신청서 PDF를 내려준다."""
+    from mcp_servers.docs.tools import OUTPUT_DIR
+
+    if not _DOWNLOAD_NAME_RE.match(filename):
+        raise HTTPException(status_code=400, detail="잘못된 파일명입니다.")
+    path = os.path.realpath(os.path.join(OUTPUT_DIR, filename))
+    if not path.startswith(os.path.realpath(OUTPUT_DIR) + os.sep):
+        raise HTTPException(status_code=400, detail="잘못된 경로입니다.")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="파일이 없습니다. 신청서를 먼저 작성해 주세요.")
+    # filename 인자로 받는 사람용 한글 파일명을 지정한다(Content-Disposition).
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=core.download_filename(filename),
+    )
+
+
 @app.get("/intro", response_model=IntroResponse)
 def intro(
     persona: str = Query("minh"),
@@ -80,7 +119,8 @@ def intro(
     """첫 화면 AI 추천 인트로. 상황 요약 본문 + 선제 선택지 라벨."""
     reply_lang = _resolve_lang(lang)
     if persona not in PERSONAS:
-        persona = "minh"
+        # 조용히 다른 사람으로 바꿔치기하지 않는다. 클라이언트 버그를 드러낸다.
+        raise HTTPException(status_code=400, detail=f"unknown persona: {persona}")
     body, labels = core.ai_recommend_actions(persona, reply_lang)
     return IntroResponse(
         body=body,
@@ -111,7 +151,9 @@ async def chat(req: ChatRequest):
     이벤트: step(tool 단계), token(텍스트 델타), final(마커 제거 본문+선택지),
     error(한국어 안내), end(종료).
     """
-    persona = req.persona if req.persona in PERSONAS else "minh"
+    if req.persona not in PERSONAS:
+        raise HTTPException(status_code=400, detail=f"unknown persona: {req.persona}")
+    persona = req.persona
 
     # 응답 언어 확정. 직접입력(is_action=False)이고 auto면 질문 언어를 감지한다.
     # 버튼 클릭(is_action=True)이면 프론트가 직전 답변 언어를 lang으로 명시한다.
@@ -123,6 +165,9 @@ async def chat(req: ChatRequest):
     lang_directive = LANGUAGES[reply_lang]["instruct"]
     user_text = f"[페르소나: {persona}] [답변 언어 강제: {lang_directive}] {req.intent}"
     system = build_system_prompt(reply_lang, persona)
+
+    # 턴별 모델 라우팅: 서류 관련 발화는 Sonnet(정확), 그 외는 Haiku(속도).
+    model = core.pick_model(req.intent)
 
     # 멀티턴 히스토리. 프론트가 보낸 메시지에서 직전 3턴을 잘라 쓴다.
     msgs = [{"role": t.role, "content": t.content} for t in req.history]
@@ -149,19 +194,21 @@ async def chat(req: ChatRequest):
             else:
                 out = payload.get("output", {}) or {}
                 completed.add(name)
+                # form_autofill이 PDF를 생성했으면 카드에 다운로드 링크를 붙인다.
+                card = core.attach_download(out.get("card"), out.get("numbers"))
                 q.put(_sse("step", {
                     "i": step_idx["n"], "name": name,
                     "label": core.TOOL_LABELS.get(name, name),
                     "is_error": False,
                     "summary": out.get("summary", ""),
-                    "card": out.get("card"),
+                    "card": card,
                 }))
 
         acc = []
         try:
             for chunk in run_chat_stream(
                 user_text, system, core.run_tool,
-                on_step=on_step, history=history,
+                on_step=on_step, history=history, model=model,
             ):
                 if chunk:
                     acc.append(chunk)
@@ -183,7 +230,7 @@ async def chat(req: ChatRequest):
                 "lang": reply_lang,
             }))
         except Exception as e:
-            print(repr(e), file=sys.stderr)
+            logger.exception("chat 스트리밍 실패: %r", e)
             q.put(_sse("error", {"message": core.korean_error_msg(e)}))
         finally:
             q.put(_SENTINEL)

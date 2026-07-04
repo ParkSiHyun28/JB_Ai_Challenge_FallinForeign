@@ -1,60 +1,54 @@
-"""배포 안전망과 수치 무결성 회귀 테스트.
+"""수치 무결성 회귀 테스트.
 
-1. secrets 브리지: st.secrets와 os.environ 폴백이 올바로 동작하는지.
-2. 수치 표시값: 리팩터(상수화) 후에도 심사 대상 통계가 동일하게 나오는지.
+심사 대상 통계가 리팩터(상수화) 후에도 동일하게 표시되는지 고정한다.
+(streamlit 폐기와 함께 secrets 브리지 테스트는 제거됐다.)
 """
-
-import os
 
 from mcp_servers.asset import data
 from mcp_servers.asset import tools
 
 
 # ---------------------------------------------------------------------------
-# 1. secrets 브리지
+# 수치 무결성: 상수화 후에도 표시값 동결
 # ---------------------------------------------------------------------------
 
-def test_bridge_secrets_importable_without_streamlit_context():
-    """streamlit 런타임 컨텍스트 밖에서도 bridge_secrets()가 예외 없이 돈다.
-    테스트나 MCP stdio 서버처럼 streamlit 없는 환경에서 import만으로 깨지면 안 된다."""
-    from shared.secrets_bridge import bridge_secrets
-
-    moved = bridge_secrets()
-    assert isinstance(moved, dict)  # 비어 있어도 dict를 반환한다.
-
-
-def test_bridge_does_not_overwrite_existing_env(monkeypatch):
-    """이미 환경에 있는 키(로컬 .env 등)는 브리지가 덮어쓰지 않는다."""
-    from shared.secrets_bridge import bridge_secrets
-
-    monkeypatch.setenv("LLM_PROVIDER", "ollama")
-    bridge_secrets()
-    assert os.environ["LLM_PROVIDER"] == "ollama"
-
-
-# ---------------------------------------------------------------------------
-# 2. 수치 무결성: 상수화 후에도 표시값 동결
-# ---------------------------------------------------------------------------
-
-def test_claim_deadline_constant_exists():
-    """소멸시효 3년이 data.py 상수로 존재해야 한다. 하드코딩 금지."""
+def test_claim_deadline_constants_split_by_law():
+    """시효 상수가 제도별로 분리돼 있어야 한다.
+    출국만기보험 3년(외국인고용법 전용보험).
+    반환일시금은 사유별: 출국 사유 5년 / 60세 도달 사유 10년(국민연금법 제115조).
+    2026-07-04 공단 1차 출처 재검증으로 옛 '일률 10년' 표기를 정정했다.
+    출처: https://www.nps.or.kr/pnsinfo/ntpsklg/getOHAF0084M0.do"""
     assert data.CLAIM_DEADLINE_YEARS == 3
+    assert data.PENSION_REFUND_DEADLINE_YEARS == 5
+    assert data.PENSION_REFUND_DEADLINE_YEARS_AGE60 == 10
 
 
-def test_pension_refund_value_stable():
-    """민 반환일시금 = 납부월수 * 85,517원. 납부월수는 페르소나 데이터에서 읽어
-    데이터 변경(입국일/납부월수 조정)에도 계산식이 안정적인지 검증한다."""
-    from shared.personas import get_persona
-    months = get_persona("minh")["pension_months"]
+def test_pension_detail_mentions_5_year_deadline():
+    """반환일시금 안내에 출국 사유 시효 5년이 상수에서 도출돼 표시된다(옛 10년 표기 회귀 방지)."""
     out = tools.pension_estimator("minh")
-    assert out["numbers"]["estimated_refund_krw"] == 85_517 * months
+    assert "5년" in out["detail"]
+    assert "10년" not in out["detail"]
 
 
-def test_pension_convert_rate_renders_22_4_percent():
-    """취업전환율 표시가 22.4%로 정확히 나와야 한다(상수에서 도출)."""
+def test_pension_refund_follows_nps_formula():
+    """반환일시금 = 납부보험료(연도별 요율) + 이자. 옛 통계 단가(85,517원/월) 회귀 방지.
+    2026-07-04 고도화: 공단 공식(국민연금법 제77조)으로 교체됐다."""
+    out = tools.pension_estimator("minh")
+    n = out["numbers"]
+    assert n["principal_krw"] > 0
+    assert n["interest_krw"] > 0
+    assert n["estimated_refund_krw"] == n["principal_krw"] + n["interest_krw"]
+    # 통계 단가 방식이면 나오던 값(85,517 × 납부월수)과 달라야 한다
+    assert n["estimated_refund_krw"] != 85_517 * n["pension_months"]
+
+
+def test_pension_suman_not_enrolled_honest():
+    """수만(네팔)은 가입 제외국. 반환일시금 해당 없음을 정직하게 안내해야 한다.
+    옛 '취업전환 시 수령 가능' 오류 안내(사실 아님) 회귀 방지."""
     out = tools.pension_estimator("suman")
-    assert "22.4%" in out["detail"]
-    assert "22.4%" in out["card"]["metric"]
+    assert out["numbers"]["eligible"] is False
+    assert out["numbers"]["reason"] == "not_enrolled"
+    assert "가입 대상이 아닙" in out["detail"]
 
 
 def test_deadline_radar_uses_claim_deadline_constant():
@@ -69,9 +63,3 @@ def test_pension_total_payout_derived_from_constant():
     out = tools.pension_estimator("minh")
     assert "3,294억" in out["detail"]
 
-
-def test_fx_constants_removed():
-    """미사용 FX 환율 상수는 제거됐어야 한다(죽은 코드 정리)."""
-    assert not hasattr(data, "FX_BASE_KRW")
-    assert not hasattr(data, "FX_NOW_KRW")
-    assert not hasattr(data, "FX_ALERT_THRESHOLD_KRW")

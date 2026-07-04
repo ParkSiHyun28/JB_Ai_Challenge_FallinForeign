@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>이상거래 보류 관제 - My LifeRoad</title>
+
+<!--
+  기업 관점 화면(은행 내부 FDS 관제 콘솔). localhost:8002 로 떠서 메인 화면(8000)의
+  iframe 안에 박힌다. 디자인은 메인 앱과 동일한 밝은 톤(흰 카드 + JB 파랑).
+
+  화면 2모드:
+  [관제 모드] 좌 보류 대상자 대기열 -> 중 엔진 판정 근거 -> 우 케이스 처리.
+    우측에 AI 조사관 소견(의심 유형, 권고 조치, 신뢰도, 케이스 요약)이 떠서
+    사람 분석가의 의사결정을 돕는다. 소견은 코드 결정론(객관 사실 기반)이다.
+  [상담 모드] "모국어 재질문" 클릭 시 전환. 좌 AI 조사관 보고서(고객 세부),
+    우 AI 에이전트가 고객과 모국어로 직접 소통 + 내용을 한국어로 통역해 직원에게 표시.
+
+  데이터: 백엔드(8001) /fraud/* = 진짜 4계층 ML 엔진 실채점. 없으면 DEMO 차선책.
+  결정권 원칙: 승인/차단은 분석가(사람)가 누른다. AI 는 소견과 근거만 제시한다.
+-->
+
+<style>
+  :root {
+    --jb-sky:   #008CCF;
+    --jb-blue:  #0067B6;
+    --jb-deep:  #0054A7;
+    --jb-navy:  #092C86;
+    --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --bg:      #F6F7F9;
+    --card:    #FFFFFF;
+    --line:    #E6E9EF;
+    --ink:     #161B26;
+    --ink-2:   #515869;
+    --muted:   #8A91A0;
+    --risk-high: #DC3448;
+    --risk-mid:  #C77700;
+    --risk-low:  #0E9F76;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: linear-gradient(165deg, #FFFFFF, #F2F6FB 65%, #EDF3FA);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  .console { height: 100%; display: flex; flex-direction: column; padding: 16px 20px; gap: 12px; }
+
+  /* 상단 바 */
+  .con-top { display: flex; align-items: center; justify-content: space-between; }
+  .con-brand { display: flex; align-items: center; gap: 10px; }
+  .jb-logo { height: 24px; display: block; }
+  .brand-divider { width: 1px; height: 18px; background: var(--line); }
+  .con-title { font-size: 18px; font-weight: 800; color: var(--jb-navy); }
+  .role-badge {
+    font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+    color: var(--jb-deep); background: rgba(0,103,182,.08); border: 1px solid rgba(0,103,182,.22);
+  }
+  body.chat-mode .role-badge { color: var(--risk-mid); background: rgba(199,119,0,.08); border-color: rgba(199,119,0,.28); }
+  .handoff-note {
+    display: none; font-size: 11.5px; color: var(--ink-2); background: rgba(199,119,0,.07);
+    border: 1px solid rgba(199,119,0,.22); border-radius: 8px; padding: 7px 11px; margin-bottom: 9px;
+  }
+  body.chat-mode .handoff-note { display: block; }
+  .handoff-note b { color: var(--risk-mid); }
+  .engine-pill {
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid rgba(14,159,118,.35); color: var(--risk-low); background: rgba(14,159,118,.08);
+  }
+  .engine-pill.off { border-color: rgba(199,119,0,.35); color: var(--risk-mid); background: rgba(199,119,0,.08); }
+  .con-live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .con-live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--risk-low); box-shadow: 0 0 0 4px rgba(14,159,118,.15); }
+  .back-btn {
+    display: none; font-size: 12.5px; font-weight: 700; color: var(--jb-deep);
+    border: 1px solid rgba(0,103,182,.3); background: rgba(0,103,182,.06);
+    padding: 6px 14px; border-radius: 999px; cursor: pointer; font-family: var(--font);
+  }
+  body.chat-mode .back-btn { display: block; }
+  body.chat-mode .con-live { display: none; }
+
+  /* 패널 공통 */
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px;
+    display: flex; flex-direction: column; min-height: 0; overflow-y: auto;
+    box-shadow: 0 10px 28px -18px rgba(9, 44, 134, .12);
+  }
+  .panel h2 { font-size: 13px; font-weight: 700; color: var(--ink-2); margin-bottom: 9px; letter-spacing: .02em; }
+  .panel h2 small { font-weight: 600; color: var(--muted); }
+  .panel::-webkit-scrollbar { width: 5px; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(20,38,79,.16); border-radius: 3px; }
+
+  /* ===== 관제 모드: 3단 ===== */
+  .con-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.35fr 1.1fr; gap: 12px; }
+  body.chat-mode .con-grid { display: none; }
+
+  /* 좌: 대기열. 목록만 스크롤하고 세그먼트 박스는 항상 하단 고정 */
+  .queue-panel { overflow: hidden; }
+  .queue-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .queue-scroll::-webkit-scrollbar { width: 5px; }
+  .queue-scroll::-webkit-scrollbar-thumb { background: rgba(20,38,79,.16); border-radius: 3px; }
+  .queue-panel .seg-box { flex-shrink: 0; }
+  .queue { display: flex; flex-direction: column; gap: 8px; }
+  .q-row { padding: 11px 12px; border-radius: 12px; background: #F6F8FB; border: 1.5px solid transparent; cursor: pointer; }
+  .q-row.sel { border-color: var(--jb-blue); background: rgba(0,103,182,.05); }
+  .q-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .q-name { font-size: 14px; font-weight: 800; color: var(--ink); }
+  .q-name small { font-weight: 600; color: var(--muted); margin-left: 4px; }
+  .q-mid { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 12px; color: var(--ink-2); }
+  .q-amt { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+  .q-bottom { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+  .tag.high { background: rgba(220,52,72,.10); color: var(--risk-high); }
+  .tag.mid  { background: rgba(199,119,0,.10); color: var(--risk-mid); }
+  .tag.low  { background: rgba(14,159,118,.10); color: var(--risk-low); }
+  .tag.st-wait    { background: rgba(0,103,182,.08); color: var(--jb-deep); }
+  .tag.st-replied { background: rgba(199,119,0,.10); color: var(--risk-mid); }
+  .tag.st-approve { background: rgba(14,159,118,.10); color: var(--risk-low); }
+  .tag.st-block   { background: rgba(220,52,72,.10); color: var(--risk-high); }
+  .tag.st-hold    { background: rgba(81,88,105,.10); color: var(--ink-2); }
+  .seg-box {
+    margin-top: 10px; padding: 10px 11px; border-radius: 10px; font-size: 12px;
+    background: rgba(0,140,207,.06); border: 1px solid rgba(0,140,207,.18); color: var(--ink-2); line-height: 1.6;
+  }
+  .seg-box b { color: var(--jb-deep); }
+
+  /* 중: 엔진 판정 근거 */
+  .detail-score { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .detail-score .num { font-size: 44px; font-weight: 800; color: var(--risk-high); line-height: 1; }
+  .detail-score .num.mid { color: var(--risk-mid); }
+  .detail-score .num.low { color: var(--risk-low); }
+  .detail-score .of { font-size: 14px; color: var(--muted); }
+  .axes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .axis { background: #F8FAFD; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; }
+  .axis .ah { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .axis .av { font-size: 15px; font-weight: 800; }
+  .axis .av.high { color: var(--risk-high); }
+  .axis .av.mid { color: var(--risk-mid); }
+  .axis .av.low { color: var(--risk-low); }
+  .axis .as { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .reason { display: flex; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .reason .k { color: var(--muted); min-width: 88px; }
+  .reason .v { font-weight: 600; color: var(--ink); }
+  .signals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .sig-chip {
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: rgba(220,52,72,.08); color: var(--risk-high); border: 1px solid rgba(220,52,72,.22);
+  }
+  .xai { margin-top: 11px; }
+  .xai .xh { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .xai-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px; align-items: center; font-size: 11px; margin-bottom: 5px; }
+  .xai-row .xn { color: var(--ink-2); }
+  .xai-bar { height: 6px; border-radius: 3px; background: #EDF0F5; overflow: hidden; }
+  .xai-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--jb-sky), var(--risk-high)); border-radius: 3px; }
+  .xai-row .xv { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mini-feed { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 9px; }
+  .mini-feed .mh { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .mini-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 12px; padding: 5px 2px; color: var(--ink-2); }
+  .mini-row .amt { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+
+  /* 우: 케이스 처리 */
+  .decision-banner { display: none; margin-bottom: 9px; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 800; text-align: center; }
+  .decision-banner.show { display: block; }
+  .decision-banner.approve { background: rgba(14,159,118,.10); color: var(--risk-low); border: 1.5px solid rgba(14,159,118,.35); }
+  .decision-banner.block   { background: rgba(220,52,72,.08); color: var(--risk-high); border: 1.5px solid rgba(220,52,72,.35); }
+  .decision-banner.hold    { background: rgba(81,88,105,.08); color: var(--ink-2); border: 1.5px solid rgba(81,88,105,.25); }
+
+  .agent-box {
+    background: linear-gradient(160deg, rgba(0,140,207,.07), rgba(9,44,134,.05));
+    border: 1px solid rgba(0,103,182,.22);
+    border-radius: 10px; padding: 11px 12px; margin-bottom: 9px;
+  }
+  .agent-box .ah { font-size: 12px; font-weight: 800; color: var(--jb-navy); margin-bottom: 6px; }
+  .agent-box .arow { display: flex; gap: 6px; font-size: 12px; margin-bottom: 4px; }
+  .agent-box .arow .k { color: var(--muted); min-width: 58px; }
+  .agent-box .arow .v { font-weight: 700; color: var(--ink); }
+  .agent-box .arow .v.warn { color: var(--risk-high); }
+  .agent-box .asum { font-size: 11.5px; line-height: 1.55; color: var(--ink-2); margin-top: 6px; border-top: 1px dashed rgba(0,103,182,.2); padding-top: 6px; }
+
+  .verify-box { background: rgba(0,103,182,.05); border: 1px solid rgba(0,103,182,.18); border-radius: 10px; padding: 10px 11px; margin-bottom: 9px; }
+  .verify-box .vh { font-size: 12px; font-weight: 700; color: var(--jb-deep); margin-bottom: 4px; }
+  .verify-box .vlang { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .verify-box .vbody { font-size: 11.5px; line-height: 1.5; color: var(--ink-2); }
+  .reply-box { border-radius: 10px; padding: 10px 11px; margin-bottom: 9px; background: rgba(14,159,118,.06); border: 1px solid rgba(14,159,118,.22); }
+  .reply-box.warn { background: rgba(220,52,72,.05); border-color: rgba(220,52,72,.25); }
+  .reply-box .rh { font-size: 12px; font-weight: 700; color: var(--risk-low); margin-bottom: 4px; }
+  .reply-box.warn .rh { color: var(--risk-high); }
+  .reply-box .rl { font-size: 11.5px; line-height: 1.55; color: var(--ink); }
+  .status-line { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+  .status-line b { color: var(--ink); }
+  .status-line b.approve { color: var(--risk-low); }
+  .status-line b.block   { color: var(--risk-high); }
+  .status-line b.hold    { color: var(--ink-2); }
+  .decide-h {
+    font-size: 12.5px; font-weight: 700; color: var(--ink-2);
+    margin: 6px 0 8px; text-align: center; padding: 8px 6px;
+    background: #F6F8FB; border: 1px solid var(--line); border-radius: 10px;
+  }
+  .decide { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: auto; }
+  .d-btn {
+    text-align: center; padding: 11px 6px; border-radius: 10px; font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--line); background: #FFFFFF; color: var(--ink-2);
+    cursor: pointer; font-family: var(--font); transition: transform .06s ease;
+  }
+  .d-btn:hover { border-color: var(--jb-blue); color: var(--jb-deep); }
+  .d-btn:active { transform: scale(.97); }
+  .d-btn.approve { border-color: rgba(14,159,118,.4); color: var(--risk-low); }
+  .d-btn.block { border-color: rgba(220,52,72,.4); color: var(--risk-high); }
+  .d-btn.picked { outline: 2px solid var(--jb-blue); outline-offset: 1px; }
+
+  /* ===== 상담 모드: 보고서 | 실제 대화(모국어) | 한국어 통역 ===== */
+  .chat-grid { flex: 1; min-height: 0; display: none; grid-template-columns: 0.92fr 1.04fr 1.04fr; gap: 12px; }
+  body.chat-mode .chat-grid { display: grid; }
+
+  /* 통역 박스 항목: 대화 순서대로 한국어 번역/분석을 카드로 쌓는다 */
+  .tr-entry { border-radius: 10px; padding: 8px 11px; font-size: 11.5px; line-height: 1.55; }
+  .tr-entry .who { font-size: 10px; font-weight: 700; letter-spacing: .04em; margin-bottom: 3px; }
+  .tr-entry.agent { background: #F1F3F7; color: var(--ink); }
+  .tr-entry.agent .who { color: var(--ink-2); }
+  .tr-entry.customer { background: rgba(0,103,182,.07); border: 1px solid rgba(0,103,182,.16); color: var(--ink); }
+  .tr-entry.customer .who { color: var(--jb-deep); }
+  .tr-entry.customer.warn { background: rgba(220,52,72,.06); border-color: rgba(220,52,72,.24); }
+  .tr-entry.customer.warn .who { color: var(--risk-high); }
+  .tr-entry b { color: var(--jb-navy); }
+  .tr-entry b.warn { color: var(--risk-high); }
+  .tr-entry .chk { margin-top: 5px; color: var(--ink-2); }
+
+  .report .rp-sec { margin-bottom: 11px; }
+  .report .rp-h { font-size: 11.5px; font-weight: 700; color: var(--jb-deep); margin-bottom: 5px; letter-spacing: .02em; }
+  .report .rp-body { font-size: 12px; line-height: 1.6; color: var(--ink-2); }
+  .rp-profile { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .rp-cell { background: #F8FAFD; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  .rp-cell .l { font-size: 10.5px; color: var(--muted); }
+  .rp-cell .v { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-top: 1px; }
+  .ev-row { display: flex; gap: 7px; padding: 5px 0; border-top: 1px dashed var(--line); font-size: 11.5px; }
+  .ev-row .t { min-width: 96px; color: var(--muted); }
+  .ev-row .f { color: var(--ink-2); }
+  .rp-q { font-size: 11.5px; color: var(--ink-2); padding: 4px 0; }
+  .rp-q b { color: var(--jb-deep); }
+
+  .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 4px 2px; }
+  /* 줄바꿈: 단어 단위로만 꺾는다(keep-all). 폭보다 긴 단어만 예외로 꺾는다. */
+  .bubble, .ko-note, .tr-entry, .report, .agent-box, .verify-box, .reply-box { word-break: keep-all; overflow-wrap: break-word; }
+  .bubble { max-width: 86%; padding: 9px 12px; border-radius: 14px; font-size: 12.5px; line-height: 1.55; }
+  .bubble.agent { align-self: flex-start; background: #F1F3F7; color: var(--ink); border-bottom-left-radius: 5px; }
+  .bubble.customer { align-self: flex-end; background: var(--jb-deep); color: #fff; border-bottom-right-radius: 5px; }
+  .bubble .blang { display: block; font-size: 10px; opacity: .65; margin-bottom: 3px; font-weight: 700; letter-spacing: .04em; }
+  .ko-note {
+    align-self: stretch; background: rgba(0,140,207,.06); border: 1px solid rgba(0,140,207,.18);
+    border-radius: 10px; padding: 8px 11px; font-size: 11.5px; line-height: 1.55; color: var(--ink-2);
+  }
+  .ko-note b { color: var(--jb-navy); }
+  .ko-note .warn { color: var(--risk-high); font-weight: 700; }
+  .chat-input { display: flex; gap: 7px; margin-top: 9px; }
+  .chat-input input {
+    flex: 1; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px;
+    font-size: 12.5px; font-family: var(--font); outline: none; color: var(--ink);
+  }
+  .chat-input input:focus { border-color: var(--jb-blue); }
+  .chat-input button {
+    border: none; background: var(--jb-deep); color: #fff; font-weight: 700; font-size: 12.5px;
+    border-radius: 10px; padding: 9px 16px; cursor: pointer; font-family: var(--font);
+  }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .preset-btn {
+    font-size: 11.5px; font-weight: 700; color: var(--ink-2);
+    border: 1px solid var(--line); background: #F8FAFD; border-radius: 999px;
+    padding: 6px 11px; cursor: pointer; font-family: var(--font);
+  }
+  .preset-btn:hover { border-color: var(--jb-blue); color: var(--jb-deep); }
+  .presets .ph { width: 100%; font-size: 10.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="console">
+
+    <div class="con-top">
+      <div class="con-brand">
+        <img class="jb-logo" src="jb-signature.png" alt="JB금융그룹" />
+        <div class="brand-divider"></div>
+        <span class="con-title" id="top-title">이상거래 보류 관제</span>
+        <span class="role-badge" id="role-badge">분석가 콘솔</span>
+      </div>
+      <div class="con-live"><span class="dot"></span><span>실시간 모니터링 중</span></div>
+      <button class="back-btn" onclick="closeChat()">분석가 콘솔로 돌아가기</button>
+    </div>
+
+    <div class="handoff-note" id="handoff"><b>분석가 콘솔에서 인수인계된 케이스</b>입니다. 상담사가 고객과 상담한 결과는 다시 분석가에게 회신되어 최종 결정에 쓰입니다.</div>
+
+    <!-- ===== 관제 모드 ===== -->
+    <div class="con-grid">
+      <section class="panel queue-panel">
+        <h2>보류 대상자</h2>
+        <div class="queue-scroll"><div class="queue" id="queue"></div></div>
+        <div class="seg-box" id="segbox"></div>
+      </section>
+
+      <section class="panel">
+        <h2>엔진 판정 근거 <small id="who"></small></h2>
+        <div id="detail"></div>
+      </section>
+
+      <section class="panel">
+        <h2>케이스 처리</h2>
+        <div class="decision-banner" id="banner"></div>
+        <div class="agent-box" id="agent-op"></div>
+        <div class="verify-box" id="verify"></div>
+        <div id="reply"></div>
+        <div class="status-line" id="status"></div>
+        <div class="decide-h">최종 승인과 차단은 사람 분석가가 판단합니다</div>
+        <div class="decide">
+          <button class="d-btn approve" id="btn-approve" onclick="decide('approve')">정상 승인</button>
+          <button class="d-btn block" id="btn-block" onclick="decide('block')">차단 확정</button>
+          <button class="d-btn" id="btn-hold" onclick="decide('hold')">보류 유지</button>
+          <button class="d-btn" id="btn-reverify" onclick="openChat()">모국어 재질문</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== 상담 모드 ===== -->
+    <div class="chat-grid">
+      <section class="panel report" id="report"></section>
+
+      <section class="panel">
+        <h2>실제 대화 <small>AI 에이전트 ↔ 고객 (모국어 원문)</small></h2>
+        <div class="chat-scroll" id="dialogue"></div>
+        <div class="presets" id="presets"></div>
+        <div class="chat-input">
+          <input id="chat-in" type="text" placeholder="고객 답변 입력" autocomplete="off" />
+          <button onclick="sendChat()">전송</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>직원용 한국어 통역 <small>대화를 실시간으로 번역, 분석</small></h2>
+        <div class="chat-scroll" id="translation"></div>
+      </section>
+    </div>
+
+  </div>
+
+  <script>
+    var API = "http://localhost:8001";
+
+    /* ---------- 차선책 데이터(백엔드 미기동 시) ---------- */
+    var FALLBACK_QUEUE = [
+      { persona_id: "minh", name: "응웬 반 민", country: "베트남", visa: "E-9",
+        label: "계좌양도 의심 이체", amount_krw: 9400000, score: 100, action: "soft_block",
+        action_ko: "즉시 보류", status: "verifying", decision: null },
+      { persona_id: "huong", name: "쩐 티 흐엉", country: "베트남", visa: "E-9",
+        label: "입금 직후 전액 이체", amount_krw: 4800000, score: 100, action: "soft_block",
+        action_ko: "즉시 보류", status: "verifying", decision: null },
+      { persona_id: "ramesh", name: "라메쉬 구룽", country: "네팔", visa: "D-2",
+        label: "새 기기 고액 이체", amount_krw: 5500000, score: 100, action: "soft_block",
+        action_ko: "즉시 보류", status: "verifying", decision: null },
+      { persona_id: "suman", name: "수만 라이", country: "네팔", visa: "D-2",
+        label: "심야 해외 송금", amount_krw: 800000, score: 100, action: "soft_block",
+        action_ko: "즉시 보류", status: "verifying", decision: null },
+      { persona_id: "cuong", name: "레 반 끄엉", country: "베트남", visa: "E-9",
+        label: "심야 제3국 송금", amount_krw: 600000, score: 95, action: "review",
+        action_ko: "추가 검토", status: "verifying", decision: null }
+    ];
+    function fbInv(summary, suspected, reco) {
+      return { case_summary: summary, suspected_type_ko: suspected, recommended_ko: reco,
+               confidence_ko: "중간", key_evidence: [], verification_questions: [] };
+    }
+    var FALLBACK_FEED = {
+      minh: {
+        persona: { name: "응웬 반 민", country: "베트남", visa: "E-9" },
+        segment: "VN:E-9", baseline: { review: 0.5685, soft_block: 0.6908 },
+        feed: [
+          { tx_id: "TX-MINH-9401", label: "계좌양도 의심 이체", amount_krw: 9400000, score: 100,
+            action: "soft_block", action_ko: "즉시 보류", rule_action: "review", model_action: "soft_block",
+            rule_score: 0.3, model_score: 0.999, is_new_device: true, drawdown: 0.99,
+            rules_ko: ["미등록 새 기기에서 고액 거래"],
+            xai: { "24시간 거래 빈도": 0.19, "잔액 인출 비율": 0.16, "거래 금액": 0.15, "체류 만료 남은 일수": 0.15 } },
+          { tx_id: "TX-MINH-2701", label: "생활비 이체", amount_krw: 450000, score: 0,
+            action: "allow", action_ko: "정상", rule_action: "allow", model_action: "allow",
+            rule_score: 0, model_score: 0.941, is_new_device: false, drawdown: 0.12, rules_ko: [], xai: {} },
+          { tx_id: "TX-MINH-1001", label: "심야 해외 송금", amount_krw: 1000000, score: 96,
+            action: "review", action_ko: "추가 검토", rule_action: "review", model_action: "review",
+            rule_score: 0.5, model_score: 0.958, is_new_device: false, drawdown: 0.2,
+            rules_ko: ["본국이 아닌 제3국 송금", "심야 시간대 해외 송금"], xai: {} }
+        ],
+        case: { persona_id: "minh", status: "verifying", decision: null, turns: [],
+          verification: { language: "vi",
+            message: "Xin chao. Ngan hang JB phat hien giao dich rut so du lon tu thiet bi moi chua dang ky. Ban vui long xac nhan co phai ban thuc hien giao dich nay khong." },
+          investigation: fbInv("VN:E-9 고객의 9,400,000원 국내 이체. 신규기기와 잔액 전액 인출이 겹쳐 보류 판정.",
+            "보이스피싱 / 원격제어 의심", "보류 유지 + 모국어 본인확인") }
+      },
+      huong: {
+        persona: { name: "쩐 티 흐엉", country: "베트남", visa: "E-9" },
+        segment: "VN:E-9", baseline: { review: 0.5685, soft_block: 0.6908 },
+        feed: [
+          { tx_id: "TX-HUONG-4801", label: "입금 직후 전액 이체", amount_krw: 4800000, score: 100,
+            action: "soft_block", action_ko: "즉시 보류", rule_action: "review", model_action: "soft_block",
+            rule_score: 0.25, model_score: 0.996, is_new_device: false, drawdown: 0.95,
+            rules_ko: ["입금 직후 전액 이체(통과계좌 의심)"], xai: {} }
+        ],
+        case: { persona_id: "huong", status: "verifying", decision: null, turns: [],
+          verification: { language: "vi", message: "Xin chào, chúng tôi tạm giữ một giao dịch bất thường trên tài khoản của bạn: 4,800,000 KRW đến KR (domestic). Bạn có thực hiện giao dịch này không? Vui lòng xác nhận." },
+          investigation: fbInv("VN:E-9 고객의 4,800,000원 국내 이체. 입금 직후 전액 이체 패턴.",
+            "보이스피싱 / 원격제어 의심", "보류 유지 + 모국어 본인확인") }
+      },
+      ramesh: {
+        persona: { name: "라메쉬 구룽", country: "네팔", visa: "D-2" },
+        segment: "NP:D-2", baseline: { review: 0.5483, soft_block: 0.6090 },
+        feed: [
+          { tx_id: "TX-RAMESH-5501", label: "새 기기 고액 이체", amount_krw: 5500000, score: 100,
+            action: "soft_block", action_ko: "즉시 보류", rule_action: "review", model_action: "soft_block",
+            rule_score: 0.3, model_score: 1.0, is_new_device: true, drawdown: 0.7,
+            rules_ko: ["미등록 새 기기에서 고액 거래"], xai: {} }
+        ],
+        case: { persona_id: "ramesh", status: "verifying", decision: null, turns: [],
+          verification: { language: "ne", message: "नमस्ते, तपाईंको खातामा एउटा असामान्य कारोबार अस्थायी रूपमा रोकिएको छ: KR मा 5,500,000 KRW (domestic)। के यो कारोबार तपाईं आफैले गर्नुभएको हो? कृपया पुष्टि गर्नुहोस्।" },
+          investigation: fbInv("NP:D-2 고객의 5,500,000원 국내 이체. 미등록 새 기기 고액 거래.",
+            "보이스피싱 / 원격제어 의심", "보류 유지 + 모국어 본인확인") }
+      },
+      suman: {
+        persona: { name: "수만 라이", country: "네팔", visa: "D-2" },
+        segment: "NP:D-2", baseline: { review: 0.5483, soft_block: 0.6090 },
+        feed: [
+          { tx_id: "TX-SUMAN-0801", label: "심야 해외 송금", amount_krw: 800000, score: 100,
+            action: "soft_block", action_ko: "즉시 보류", rule_action: "soft_block", model_action: "soft_block",
+            rule_score: 0.85, model_score: 1.0, is_new_device: true, drawdown: 0.6,
+            rules_ko: ["본국이 아닌 제3국 송금", "심야 시간대 해외 송금"], xai: {} }
+        ],
+        case: { persona_id: "suman", status: "verifying", decision: null, turns: [],
+          verification: { language: "ne", message: "नमस्ते, तपाईंको खातामा एउटा असामान्य कारोबार अस्थायी रूपमा रोकिएको छ: PH मा 800,000 KRW (remittance)। के यो कारोबार तपाईं आफैले गर्नुभएको हो? कृपया पुष्टि गर्नुहोस्।" },
+          investigation: fbInv("NP:D-2 고객의 800,000원 심야 제3국 송금. 새 기기와 겹침.",
+            "출국기 계좌양도 의심", "보류 유지 + 모국어 본인확인") }
+      },
+      cuong: {
+        persona: { name: "레 반 끄엉", country: "베트남", visa: "E-9" },
+        segment: "VN:E-9", baseline: { review: 0.5685, soft_block: 0.6908 },
+        feed: [
+          { tx_id: "TX-CUONG-0601", label: "심야 제3국 송금", amount_krw: 600000, score: 95,
+            action: "review", action_ko: "추가 검토", rule_action: "review", model_action: "allow",
+            rule_score: 0.45, model_score: 0.948, is_new_device: false, drawdown: 0.3,
+            rules_ko: ["본국이 아닌 제3국 송금", "심야 시간대 해외 송금"], xai: {} }
+        ],
+        case: { persona_id: "cuong", status: "verifying", decision: null, turns: [],
+          verification: { language: "vi", message: "Xin chào, chúng tôi tạm giữ một giao dịch bất thường trên tài khoản của bạn: 600,000 KRW đến PH (remittance). Bạn có thực hiện giao dịch này không? Vui lòng xác nhận." },
+          investigation: fbInv("VN:E-9 고객의 600,000원 심야 제3국 송금.", "이례 거래", "수동 심사") }
+      }
+    };
+
+    /* ---------- 상태 ---------- */
+    var LIVE = false;
+    var QUEUE = [];
+    var FEEDS = {};
+    var CUR = "minh";
+    var selectedTx = 0;
+    var chatBusy = false;
+
+    var LANG_KO = { vi: "베트남어", ne: "네팔어", ko: "한국어", en: "영어" };
+    var INTENT_KO = {
+      confirmed_by_customer: "본인 거래 확인",
+      denies_transaction: "거래 부인",
+      coercion_hint: "강요 정황 감지",
+      remote_control_hint: "원격제어 정황 감지",
+      scam_script_hint: "사기 스크립트 정황",
+      inconsistent_confirmation: "진술 불일치",
+      unclear_needs_followup: "불명확 - 추가 확인 필요",
+      unsafe_or_irrelevant_reply: "무관/위험 응답"
+    };
+    var STATE_KO = {
+      release_candidate: "정상 해제 후보",
+      account_takeover_escalation: "계좌양도 의심 상신",
+      protective_escalation: "고객 보호 조치 상신",
+      keep_hold_and_ask_followup: "보류 유지 + 추가 질문",
+      manual_review: "수동 심사"
+    };
+    var DECIDE_KO = { approve: "정상 승인", block: "차단 확정", hold: "보류 유지" };
+
+    // 상담 프리셋(고객 답변 예시). text=고객 모국어 원문, ko=그 원문의 한국어 직역.
+    var PRESETS = {
+      vi: [
+        { label: "본인 거래 확인", text: "Đúng, tôi đã thực hiện giao dịch này.", ko: "네, 제가 한 거래가 맞습니다." },
+        { label: "거래 부인", text: "Tôi không biết giao dịch này.", ko: "저는 이 거래를 모릅니다." },
+        { label: "강요 정황", text: "Có người bảo tôi làm và không được báo ngân hàng.", ko: "누군가 저에게 시켰고 은행에 알리지 말라고 했습니다." },
+        { label: "원격제어 정황", text: "Họ bảo tôi cài ứng dụng điều khiển từ xa.", ko: "그들이 저에게 원격제어 앱을 설치하라고 했습니다." }
+      ],
+      ne: [
+        { label: "본인 거래 확인", text: "हो, यो मैले गरेको हुँ।", ko: "네, 제가 한 거래가 맞습니다." },
+        { label: "거래 부인", text: "यो कारोबार थाहा छैन।", ko: "저는 이 거래를 모릅니다." },
+        { label: "강요 정황", text: "कसैले धम्की दियो। नभन्न भन्यो।", ko: "누군가 저를 협박했고 말하지 말라고 했습니다." },
+        { label: "원격제어 정황", text: "एप इन्स्टल गर्न लगाइयो।", ko: "앱을 설치하게 시켰습니다." }
+      ]
+    };
+    // 고객 원문 -> 한국어 직역 조회표(프리셋 기반). buildEvents 에서 고객 답변 번역에 쓴다.
+    var REPLY_KO = {};
+    Object.keys(PRESETS).forEach(function (lg) {
+      PRESETS[lg].forEach(function (p) { REPLY_KO[p.text] = p.ko; });
+    });
+    // 후속 안내(에이전트) 한국어 직역: 라우팅 상태별 문구.
+    var FOLLOW_KO = {
+      release_candidate: "본인 확인이 되었습니다. 거래를 정상 처리하겠습니다. 감사합니다.",
+      account_takeover_escalation: "고객님 안전을 위해 거래를 계속 보류하고 계좌 보호 절차를 진행하겠습니다.",
+      protective_escalation: "고객님 보호를 위해 거래를 계속 보류합니다. 안전을 위해 담당자가 이어서 확인하겠습니다.",
+      keep_hold_and_ask_followup: "확인이 더 필요해 거래를 잠시 더 보류하겠습니다. 몇 가지 더 여쭤보겠습니다.",
+      manual_review: "담당자가 추가 검토를 거쳐 다시 안내드리겠습니다."
+    };
+    function verifKo(feed) {
+      // 엔진이 보낸 모국어 본인확인 메시지의 한국어 직역(금액/수취국을 실제 값으로).
+      var hero = (feed && feed.feed && feed.feed[0]) || {};
+      var dest = hero.counterparty_country || "";
+      return "안녕하세요. 고객님 계좌에서 " + (hero.amount_krw ? amt(hero.amount_krw) + "원" : "이 거래") +
+        (dest ? "(" + dest + " 수취)" : "") + " 이상 거래가 감지되어 잠시 보류했습니다. 본인이 하신 거래가 맞습니까? 확인 부탁드립니다.";
+    }
+
+    // 상담 시작 시 에이전트가 모국어로 먼저 안내하는 스크립트.
+    // 보류 사유 뒤에 (1) 필요 증명, (2) 진행 방법과 안심을 이어 붙여 대화를 채운다.
+    // text=고객 모국어 원문, ko=그 원문을 그대로 옮긴 한국어 직역(에이전트 말투 그대로).
+    var GUIDE = {
+      vi: [
+        { text: "Để xác minh, bạn vui lòng cho biết: bạn có tự mình thực hiện lệnh chuyển này không, người nhận là ai và với mục đích gì. Nếu có thể, hãy gửi ảnh chụp tin nhắn hoặc cuộc gọi liên quan đến giao dịch.",
+          ko: "확인을 위해 여쭤봅니다. 이 이체를 직접 하셨는지, 수취인은 누구이며 어떤 목적인지 알려주세요. 가능하시면 거래와 관련된 문자나 통화 화면을 캡처해 보내주세요." },
+        { text: "Nếu có ai đó đang hướng dẫn bạn chuyển tiền, hoặc yêu cầu cài ứng dụng điều khiển từ xa, hãy dừng lại ngay và cho chúng tôi biết. Số tiền của bạn đang được giữ an toàn cho đến khi xác minh xong, bạn không cần vội.",
+          ko: "혹시 누군가 이체를 지시하고 있거나 원격제어 앱 설치를 요구한다면, 지금 즉시 멈추시고 저희에게 알려주세요. 고객님 돈은 확인이 끝날 때까지 안전하게 보관되니 서두르지 않으셔도 됩니다." }
+      ],
+      ne: [
+        { text: "पुष्टिका लागि कृपया भन्नुहोस्: यो कारोबार तपाईं आफैंले गर्नुभएको हो, प्राप्तकर्ता को हो र किन पठाउनुभएको हो। सम्भव भए सम्बन्धित सन्देश वा कलको स्क्रिनसट पठाउनुहोस्।",
+          ko: "확인을 위해 여쭤봅니다. 이 거래를 직접 하셨는지, 수취인은 누구이며 왜 보내셨는지 알려주세요. 가능하시면 관련 문자나 통화 화면을 캡처해 보내주세요." },
+        { text: "यदि कसैले तपाईंलाई पैसा पठाउन लगाइरहेको छ वा रिमोट कन्ट्रोल एप इन्स्टल गर्न भन्दैछ भने तुरुन्तै रोक्नुहोस् र हामीलाई भन्नुहोस्। तपाईंको रकम पुष्टि नभएसम्म सुरक्षित राखिएको छ, हतार गर्नु पर्दैन।",
+          ko: "혹시 누군가 돈을 보내라고 시키거나 원격제어 앱을 설치하라고 한다면 즉시 멈추시고 저희에게 알려주세요. 고객님 돈은 확인이 끝날 때까지 안전하게 보관되니 서두르지 않으셔도 됩니다." }
+      ]
+    };
+
+    /* ---------- 공통 ---------- */
+    function won(n) {
+      var man = Math.round(n / 10000);
+      if (man >= 10000) {
+        var eok = Math.floor(man / 10000), rest = man % 10000;
+        return eok + "억 " + (rest ? rest.toLocaleString("ko-KR") + "만 원" : "원");
+      }
+      return man.toLocaleString("ko-KR") + "만 원";
+    }
+    function amt(n) { return n.toLocaleString("ko-KR"); }
+    function tierOf(a) { return a === "soft_block" ? "high" : (a === "review" ? "mid" : "low"); }
+    function esc(s) { var d = document.createElement("div"); d.textContent = String(s == null ? "" : s); return d.innerHTML; }
+    function curFeed() { return FEEDS[CUR]; }
+    function curCase() { return (FEEDS[CUR] || {}).case || {}; }
+
+    // 종결(승인/차단) 케이스는 큐에서 내린다. 보류 유지와 재질문은 미결이라 큐에 남는다.
+    // 승인/차단/보류유지 셋 다 = 분석가 결정 완료 → 큐에서 내린다. 모국어 재질문만 큐에 남는다.
+    function isResolved(row) { return row.status === "decided" && !!row.decision; }
+    function visibleQueue() { return QUEUE.filter(function (r) { return !isResolved(r); }); }
+    function firstVisibleId() { var v = visibleQueue(); return v.length ? v[0].persona_id : null; }
+
+    // 엔진 요약에 붙어 오는 원문 인용("고객 답변: ...")을 항상 새 줄로 분리해 HTML 로 만든다.
+    function summaryHtml(summary) {
+      var s = summary || "";
+      var m = s.match(/고객\s?답변\s?:/);
+      if (!m) return "고객 답변 요약: " + esc(s);
+      var i = s.indexOf(m[0]);
+      return "고객 답변 요약: " + esc(s.slice(0, i).trim()) + "<br />" + esc(s.slice(i).trim());
+    }
+
+    function statusBadge(row) {
+      if (row.status === "decided" && row.decision) {
+        if (row.decision === "approve") return '<span class="tag st-approve">승인 완료</span>';
+        if (row.decision === "block") return '<span class="tag st-block">차단 완료</span>';
+        return '<span class="tag st-hold">보류 유지</span>';
+      }
+      if (row.status === "replied") return '<span class="tag st-replied">고객 응답 수신</span>';
+      return '<span class="tag st-wait">보류 중</span>';
+    }
+
+    /* ---------- 관제 모드 렌더 ---------- */
+    function renderQueue() {
+      var el = document.getElementById("queue");
+      el.innerHTML = "";
+      var rows = visibleQueue();   // 종결된 건은 큐에서 내려 다음 건이 올라온다
+      if (!rows.length) {
+        el.innerHTML = '<div class="seg-box">모든 보류 건을 처리했습니다. 대기 중인 건이 없습니다.</div>';
+        return;
+      }
+      rows.forEach(function (row) {
+        var div = document.createElement("div");
+        div.className = "q-row" + (row.persona_id === CUR ? " sel" : "");
+        div.innerHTML =
+          '<div class="q-top"><span class="q-name">' + esc(row.name) +
+            "<small>" + esc(row.country + " " + row.visa) + "</small></span>" +
+            '<span class="tag ' + tierOf(row.action) + '">위험 ' + row.score + "</span></div>" +
+          '<div class="q-mid"><span>' + esc(row.label) + '</span><span class="q-amt">' + amt(row.amount_krw) + "원</span></div>" +
+          '<div class="q-bottom">' + statusBadge(row) + "</div>";
+        div.addEventListener("click", function () { selectPersona(row.persona_id); });
+        el.appendChild(div);
+      });
+    }
+
+    function axisCell(head, action, score, note) {
+      var tier = tierOf(action);
+      var ko = action === "soft_block" ? "즉시 보류" : (action === "review" ? "추가 검토" : "정상");
+      return '<div class="axis"><div class="ah">' + head + '</div>' +
+        '<div class="av ' + tier + '">' + ko + '</div>' +
+        '<div class="as">' + note + (score != null ? " " + score : "") + "</div></div>";
+    }
+
+    function renderDetail() {
+      var d = curFeed();
+      if (!d) { document.getElementById("detail").innerHTML = ""; return; }
+      document.getElementById("who").textContent = d.persona.name + " (" + d.persona.country + " " + d.persona.visa + ")";
+      var t = d.feed[selectedTx] || d.feed[0];
+      var tier = tierOf(t.action);
+      var numClass = tier === "high" ? "" : (tier === "mid" ? " mid" : " low");
+      var chips = (t.rules_ko && t.rules_ko.length)
+        ? '<div class="signals">' + t.rules_ko.map(function (s) { return '<span class="sig-chip">' + esc(s) + "</span>"; }).join("") + "</div>"
+        : '<div class="status-line">발동한 위험 룰 없음</div>';
+
+      var xaiHtml = "";
+      var keys = Object.keys(t.xai || {});
+      if (keys.length) {
+        var max = 0; keys.forEach(function (k) { max = Math.max(max, t.xai[k]); });
+        xaiHtml = '<div class="xai"><div class="xh">판단 근거 - 피처 기여도 (Local-DIFFI 설명)</div>' +
+          keys.map(function (k) {
+            var w = max > 0 ? Math.round(t.xai[k] / max * 100) : 0;
+            return '<div class="xai-row"><span class="xn">' + esc(k) + '</span>' +
+              '<span class="xai-bar"><i style="width:' + w + '%"></i></span>' +
+              '<span class="xv">' + t.xai[k].toFixed(2) + "</span></div>";
+          }).join("") + "</div>";
+      }
+
+      var mini = "";
+      if (d.feed.length > 1) {
+        mini = '<div class="mini-feed"><div class="mh">이 고객의 최근 거래 흐름</div>' +
+          d.feed.map(function (f, i) {
+            var tk = tierOf(f.action);
+            var tKo = tk === "high" ? "위험" : (tk === "mid" ? "주의" : "정상");
+            return '<div class="mini-row" style="cursor:pointer' + (i === selectedTx ? ';font-weight:700' : '') + '" onclick="pickTx(' + i + ')">' +
+              '<span class="tag ' + tk + '">' + tKo + " " + f.score + "</span>" +
+              "<span>" + esc(f.label) + "</span>" +
+              '<span class="amt">' + amt(f.amount_krw) + "</span></div>";
+          }).join("") + "</div>";
+      }
+
+      document.getElementById("detail").innerHTML =
+        '<div class="detail-score"><span class="num' + numClass + '">' + t.score + "</span>" +
+        '<span class="of">/ 100 위험 점수 - ' + esc(t.action_ko) + "</span></div>" +
+        '<div class="axes">' +
+          axisCell("룰 엔진 (L1)", t.rule_action, t.rule_score, "룰 점수") +
+          axisCell("정상분포모형 (L2 IF)", t.model_action, t.model_score, "이상 분위") +
+        "</div>" +
+        '<div class="reason"><span class="k">거래</span><span class="v">' + esc(t.label) + "</span></div>" +
+        '<div class="reason"><span class="k">금액</span><span class="v">' + amt(t.amount_krw) + "원</span></div>" +
+        '<div class="reason"><span class="k">기기</span><span class="v">' +
+          (t.is_new_device ? "미등록 새 기기 (최초 접속)" : "기존 등록 기기") + "</span></div>" +
+        '<div class="reason"><span class="k">잔액 인출</span><span class="v">' +
+          Math.round((t.drawdown || 0) * 100) + "%</span></div>" +
+        chips + xaiHtml + mini;
+
+      var b = d.baseline || {};
+      document.getElementById("segbox").innerHTML =
+        "선택 대상자 세그먼트 <b>" + esc(d.segment) + "</b> 정상분포 학습 완료<br />" +
+        "검토 임계 분위 " + (b.review != null ? b.review.toFixed(3) : "-") +
+        " / 보류 임계 분위 " + (b.soft_block != null ? b.soft_block.toFixed(3) : "-");
+    }
+
+    function pickTx(i) { selectedTx = i; renderDetail(); }
+
+    function renderCase() {
+      var c = curCase();
+      var v = c.verification || {};
+      var inv = c.investigation || {};
+
+      var banner = document.getElementById("banner");
+      if (c.status === "decided" && c.decision) {
+        var cls = c.decision === "approve" ? "approve" : (c.decision === "block" ? "block" : "hold");
+        banner.className = "decision-banner show " + cls;
+        banner.textContent = "분석가 결정: " + (DECIDE_KO[c.decision] || c.decision);
+      } else {
+        banner.className = "decision-banner";
+        banner.textContent = "";
+      }
+      ["approve", "block", "hold"].forEach(function (k) {
+        var btn = document.getElementById("btn-" + k);
+        if (btn) btn.classList.toggle("picked", c.status === "decided" && c.decision === k);
+      });
+
+      // AI 조사관 소견: 사람 결정을 돕는 객관 사실 기반 의견(코드 결정론)
+      var danger = /계좌양도|피싱|원격/.test(inv.suspected_type_ko || "");
+      document.getElementById("agent-op").innerHTML =
+        '<div class="ah">AI 조사관 소견 (판정 불변, 객관 근거 기반)</div>' +
+        '<div class="arow"><span class="k">의심 유형</span><span class="v' + (danger ? " warn" : "") + '">' + esc(inv.suspected_type_ko || "-") + "</span></div>" +
+        '<div class="arow"><span class="k">권고 조치</span><span class="v">' + esc(inv.recommended_ko || "-") + "</span></div>" +
+        '<div class="arow"><span class="k">신뢰도</span><span class="v">' + esc(inv.confidence_ko || "-") + "</span></div>" +
+        '<div class="asum">' + esc(inv.case_summary || "") + "</div>";
+
+      document.getElementById("verify").innerHTML =
+        '<div class="vh">모국어 본인확인 발송</div>' +
+        '<div class="vlang">발송 언어 ' + (LANG_KO[v.language] || v.language || "-") + "</div>" +
+        '<div class="vbody">' + esc(v.message || "") + "</div>";
+
+      var replyEl = document.getElementById("reply");
+      var turns = c.turns || [];
+      if (turns.length) {
+        var t = turns[turns.length - 1];
+        var warn = (t.next_state === "protective_escalation" || t.next_state === "account_takeover_escalation");
+        replyEl.innerHTML =
+          '<div class="reply-box' + (warn ? " warn" : "") + '">' +
+          '<div class="rh">상담사 회신 - 고객 응답 의도분류 (엔진 자동)</div>' +
+          '<div class="rl">의도: <b>' + (INTENT_KO[t.detected_intent] || esc(t.detected_intent)) + "</b><br />" +
+          "권고 상태: <b>" + (STATE_KO[t.next_state] || esc(t.next_state)) + "</b><br />" +
+          summaryHtml(t.analyst_summary_ko) + "</div></div>";
+      } else {
+        replyEl.innerHTML = "";
+      }
+
+      var statusEl = document.getElementById("status");
+      if (c.status === "decided" && c.decision) {
+        var scls = c.decision === "approve" ? "approve" : (c.decision === "block" ? "block" : "hold");
+        statusEl.innerHTML = "케이스 상태: <b class=\"" + scls + "\">결정 완료 - " + (DECIDE_KO[c.decision] || c.decision) + "</b>";
+      } else if (c.status === "replied") {
+        statusEl.innerHTML = "케이스 상태: <b>고객 응답 수신 - 분석가 결정 대기</b>";
+      } else {
+        statusEl.innerHTML = "본인확인 상태: <b>모국어 푸시 발송 완료 - 응답 대기</b>";
+      }
+    }
+
+    function renderAll() { renderQueue(); renderDetail(); renderCase(); }
+
+    /* ---------- 상담 모드 ---------- */
+    function renderReport() {
+      var d = curFeed();
+      if (!d) return;
+      var c = curCase();
+      var inv = c.investigation || {};
+      var hero = d.feed[0] || {};
+      var ev = (inv.key_evidence || []).slice(0, 7);
+      var qs = inv.verification_questions || [];
+      document.getElementById("report").innerHTML =
+        "<h2>AI 조사관 보고서 <small>상담 근거 자료</small></h2>" +
+        '<div class="rp-sec"><div class="rp-h">고객 정보</div><div class="rp-profile">' +
+          '<div class="rp-cell"><div class="l">이름</div><div class="v">' + esc(d.persona.name) + "</div></div>" +
+          '<div class="rp-cell"><div class="l">국적 / 비자</div><div class="v">' + esc(d.persona.country + " " + d.persona.visa) + "</div></div>" +
+          '<div class="rp-cell"><div class="l">세그먼트</div><div class="v">' + esc(d.segment) + "</div></div>" +
+          '<div class="rp-cell"><div class="l">보류 거래</div><div class="v">' + won(hero.amount_krw || 0) + "</div></div>" +
+        "</div></div>" +
+        '<div class="rp-sec"><div class="rp-h">케이스 요약</div><div class="rp-body">' + esc(inv.case_summary || "") + "</div></div>" +
+        '<div class="rp-sec"><div class="rp-h">AI 소견</div><div class="rp-body">' +
+          "의심 유형: <b>" + esc(inv.suspected_type_ko || "-") + "</b><br />권고: " + esc(inv.recommended_ko || "-") +
+          " (신뢰도 " + esc(inv.confidence_ko || "-") + ")</div></div>" +
+        (ev.length ? ('<div class="rp-sec"><div class="rp-h">증거 카드</div>' +
+          ev.map(function (e) { return '<div class="ev-row"><span class="t">' + esc(e.title) + '</span><span class="f">' + esc(e.fact) + "</span></div>"; }).join("") + "</div>") : "") +
+        (qs.length ? ('<div class="rp-sec"><div class="rp-h">확인 질문 계획</div>' +
+          qs.map(function (q, i) { return '<div class="rp-q"><b>Q' + (i + 1) + "</b> " + esc(q.question) + "</div>"; }).join("") + "</div>") : "");
+    }
+
+    function bubble(role, lang, text) {
+      var el = document.createElement("div");
+      el.className = "bubble " + role;
+      el.innerHTML = '<span class="blang">' + (role === "agent" ? "AI 에이전트" : "고객") +
+        " / " + (LANG_KO[lang] || lang) + "</span>" + esc(text);
+      return el;
+    }
+    function koNote(html) {
+      var el = document.createElement("div");
+      el.className = "ko-note";
+      el.innerHTML = html;
+      return el;
+    }
+
+    // 대화 이벤트 목록을 만든다. 각 이벤트가 대화(모국어 원문)와 통역(한국어)에 1:1로 대응된다.
+    function buildEvents(c) {
+      var v = c.verification || {};
+      var lang = v.language || "vi";
+      var ev = [];
+      // 오프닝: 보류 사유 안내. ko = 에이전트가 보낸 모국어 메시지의 한국어 직역.
+      ev.push({ who: "agent", lang: lang, native: v.message || "", ko: esc(verifKo(curFeed())) });
+      // 필요 증명, 진행 방법 안내. ko = 원문 직역.
+      (GUIDE[lang] || []).forEach(function (g) {
+        ev.push({ who: "agent", lang: lang, native: g.text, ko: esc(g.ko) });
+      });
+      // 고객 답변과 후속
+      (c.turns || []).forEach(function (t) {
+        var warn = (t.next_state === "protective_escalation" || t.next_state === "account_takeover_escalation");
+        var checklist = (t.operator_checklist || []).slice(0, 3).map(function (x) { return "- " + esc(x); }).join("<br />");
+        // 고객 답변의 한국어 직역(프리셋 조회, 없으면 엔진 요약의 원문 인용에서라도 표기)
+        var replyKo = REPLY_KO[t.customer_reply] || "";
+        ev.push({
+          who: "customer", lang: t.language || lang, native: t.customer_reply, warn: warn,
+          ko: (replyKo ? "고객 답변 번역: <b>" + esc(replyKo) + "</b>" : summaryHtml(t.analyst_summary_ko)) +
+              '<div class="chk">의도: <b' + (warn ? ' class="warn"' : "") + ">" + (INTENT_KO[t.detected_intent] || esc(t.detected_intent)) + "</b>" +
+              " / 권고 상태: <b>" + (STATE_KO[t.next_state] || esc(t.next_state)) + "</b>" +
+              (checklist ? "<br />확인 체크리스트<br />" + checklist : "") + "</div>"
+        });
+        if (t.customer_next_message) {
+          ev.push({ who: "agent", lang: t.language || lang, native: t.customer_next_message,
+            ko: esc(FOLLOW_KO[t.next_state] || "상담 판단에 따른 후속 안내를 전달했습니다.") });
+        }
+      });
+      return ev;
+    }
+
+    function renderConsult() {
+      var c = curCase();
+      var lang = (c.verification || {}).language || "vi";
+      var events = buildEvents(c);
+
+      // 왼쪽: 실제 대화(모국어 원문 버블만)
+      var dlg = document.getElementById("dialogue");
+      dlg.innerHTML = "";
+      events.forEach(function (e) { dlg.appendChild(bubble(e.who, e.lang, e.native)); });
+      dlg.scrollTop = dlg.scrollHeight;
+
+      // 오른쪽: 같은 순서로 한국어 통역/분석
+      var tr = document.getElementById("translation");
+      tr.innerHTML = "";
+      events.forEach(function (e) {
+        var el = document.createElement("div");
+        el.className = "tr-entry " + e.who + (e.warn ? " warn" : "");
+        el.innerHTML = '<div class="who">' + (e.who === "agent" ? "AI 에이전트" : "고객") + "</div>" + e.ko;
+        tr.appendChild(el);
+      });
+      tr.scrollTop = tr.scrollHeight;
+
+      // 고객 답변 예시 프리셋
+      var pr = PRESETS[lang] || PRESETS.vi;
+      var pEl = document.getElementById("presets");
+      pEl.innerHTML = '<span class="ph">고객 답변 예시</span>';
+      pr.forEach(function (p) {
+        var b = document.createElement("button");
+        b.className = "preset-btn";
+        b.textContent = p.label;
+        b.onclick = function () { sendReply(p.text); };
+        pEl.appendChild(b);
+      });
+    }
+
+    function openChat() {
+      if (!curFeed()) return;
+      // 모국어 재질문 = 본인확인 재발송 상태로 되돌리고 상담 화면을 연다
+      if (LIVE) {
+        fetch(API + "/fraud/decision", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ persona_id: CUR, decision: "reverify" })
+        }).then(function (r) { return r.json(); })
+          .then(function (c) { FEEDS[CUR].case = c; syncQueueRow(c); enterChat(); })
+          .catch(function () { enterChat(); });
+      } else {
+        enterChat();
+      }
+    }
+    function enterChat() {
+      document.body.classList.add("chat-mode");
+      document.getElementById("top-title").textContent = "모국어 상담 - " + (curFeed().persona.name || "");
+      document.getElementById("role-badge").textContent = "상담사 워크스페이스";
+      renderReport(); renderConsult();
+    }
+    function closeChat() {
+      document.body.classList.remove("chat-mode");
+      document.getElementById("top-title").textContent = "이상거래 보류 관제";
+      document.getElementById("role-badge").textContent = "분석가 콘솔";
+      renderAll();
+    }
+
+    function sendChat() {
+      var inp = document.getElementById("chat-in");
+      var text = (inp.value || "").trim();
+      if (!text) return;
+      inp.value = "";
+      sendReply(text);
+    }
+
+    function sendReply(text) {
+      if (chatBusy) return;
+      var c = curCase();
+      if (!LIVE) {
+        // 차선책: 화면에만 추가(분류 없음 안내)
+        c.turns = c.turns || [];
+        c.turns.push({ language: (c.verification || {}).language, customer_reply: text,
+          customer_next_message: "", analyst_summary_ko: "백엔드 미연결이라 의도분류를 건너뜁니다.",
+          detected_intent: "unclear_needs_followup", next_state: "manual_review", operator_checklist: [] });
+        renderConsult();
+        return;
+      }
+      chatBusy = true;
+      fetch(API + "/fraud/reply", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona_id: CUR, reply: text })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (turn) {
+          var cc = curCase();
+          cc.turns = cc.turns || [];
+          cc.turns.push(turn);
+          cc.status = "replied";
+          syncQueueRow(cc);
+          renderConsult();
+        })
+        .catch(function () {})
+        .then(function () { chatBusy = false; });
+    }
+
+    /* ---------- 데이터 로딩 ---------- */
+    function setEngine(on, label) {
+      var pill = document.getElementById("engine-pill");
+      if (!pill) return;   // 배지 제거됨
+      pill.textContent = label;
+      pill.className = "engine-pill" + (on ? "" : " off");
+    }
+
+    function loadFeed(pid) {
+      return fetch(API + "/fraud/feed?persona_id=" + pid)
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) { FEEDS[pid] = d; return d; });
+    }
+
+    function selectPersona(pid) {
+      CUR = pid; selectedTx = 0;
+      if (LIVE && !FEEDS[pid]) {
+        loadFeed(pid).then(renderAll).catch(function () { renderAll(); });
+      } else {
+        renderAll();
+      }
+    }
+
+    function syncQueueRow(caseObj) {
+      QUEUE.forEach(function (row) {
+        if (row.persona_id === (caseObj.persona_id || CUR)) {
+          row.status = caseObj.status;
+          row.decision = caseObj.decision;
+        }
+      });
+    }
+
+    function boot() {
+      // 콘솔을 열 때마다 전체 초기화 → 대기열이 항상 전원 보류 상태로 시작한다.
+      fetch(API + "/fraud/reset_all", { method: "POST" })
+        .catch(function () {})
+        .then(function () { return fetch(API + "/fraud/queue"); })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) {
+          LIVE = true; QUEUE = d.queue;
+          setEngine(true, "LIVE ML 엔진 (IF + 룰 + XAI)");
+          // 결정 완료 건은 큐에서 빠지므로, 화면에 보이는 첫 대상자를 선택한다(좌/중 일치).
+          CUR = firstVisibleId() || (QUEUE.length ? QUEUE[0].persona_id : "minh");
+          return loadFeed(CUR);
+        })
+        .then(function () { renderAll(); setInterval(poll, 3000); })
+        .catch(function () {
+          LIVE = false;
+          QUEUE = FALLBACK_QUEUE; FEEDS = FALLBACK_FEED; CUR = "minh";
+          setEngine(false, "대기 데이터 (백엔드 미연결)");
+          renderAll();
+        });
+    }
+
+    function poll() {
+      if (!LIVE) return;
+      fetch(API + "/fraud/case?persona_id=" + CUR)
+        .then(function (r) { return r.json(); })
+        .then(function (c) {
+          if (FEEDS[CUR]) FEEDS[CUR].case = c;
+          syncQueueRow(c);
+          if (document.body.classList.contains("chat-mode")) { renderConsult(); }
+          else { renderQueue(); renderCase(); }
+        })
+        .catch(function () {});
+    }
+
+    // 종결(승인/차단) 후 현재 건이 큐에서 내려가면 다음 보류 건으로 자동 이동한다.
+    function advanceIfResolved() {
+      var cur = QUEUE.filter(function (r) { return r.persona_id === CUR; })[0];
+      if (cur && isResolved(cur)) {
+        var nxt = firstVisibleId();
+        if (nxt && nxt !== CUR) { selectPersona(nxt); return true; }
+      }
+      return false;
+    }
+
+    function decide(kind) {
+      if (!FEEDS[CUR]) return;   // 부팅 전 클릭 보호
+      if (!LIVE) {
+        var c0 = curCase();
+        c0.persona_id = CUR;
+        c0.status = "decided";
+        c0.decision = kind;
+        syncQueueRow(c0); renderQueue(); renderCase();
+        setTimeout(advanceIfResolved, 700);   // 결정 배너를 잠깐 보여준 뒤 다음 건으로
+        return;
+      }
+      fetch(API + "/fraud/decision", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona_id: CUR, decision: kind })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (c) {
+          FEEDS[CUR].case = c;
+          syncQueueRow(c);
+          renderQueue(); renderCase();
+          setTimeout(advanceIfResolved, 700);
+        })
+        .catch(function () {});
+    }
+
+    document.getElementById("chat-in").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") sendChat();
+    });
+
+    boot();
+  </script>
+</body>
+</html>

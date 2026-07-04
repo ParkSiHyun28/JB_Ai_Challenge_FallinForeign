@@ -4,15 +4,14 @@
 예외가 없고 출력 4키 규약을 지키는지 검증한다. 고정 2명(minh suman) 테스트와 별개다.
 이 파일은 동적화 작업이 깨지지 않게 지키는 안전망이다."""
 
-import random
-
 from shared.personas import (
     PERSONAS, get_persona, all_personas, make_random_personas, register_personas,
-    VISA_ROLE,
+    VISA_ROLE, DEMO_TODAY_STR,
 )
 from shared.registry import TOOL_REGISTRY
+from backend.core import active_plan
 
-DEMO_TODAY = "2026-10-03"
+DEMO_TODAY = DEMO_TODAY_STR
 COUNT = 80
 SEED = 7
 
@@ -31,29 +30,6 @@ def _run_tool(name, args):
     if "as_of" in getattr(func, "__code__").co_varnames:
         kwargs["as_of"] = DEMO_TODAY
     return func(**kwargs)
-
-
-def _active_plan(persona_id):
-    """app.active_plan과 같은 규칙. streamlit import를 피하려 여기 복제한다.
-    app.py를 고치면 이 복제도 같이 맞춘다."""
-    p = get_persona(persona_id)
-    plan = []
-    if p["visa"] == "E-9":
-        plan.append(("deadline_radar", {"persona_id": persona_id}))
-    if p["monthly_remit_krw"] > 0:
-        plan.append(("remit_optimizer", {"persona_id": persona_id}))
-    if (not p["social_security_treaty"]) and p["pension_months"] > 0:
-        plan.append(("pension_estimator", {"persona_id": persona_id}))
-    if p["deposit_balance_krw"] > 0:
-        plan.append(("collateral_calc", {"persona_id": persona_id}))
-    if p["monthly_wage_krw"] == 0 and p["deposit_balance_krw"] > 0:
-        plan.append(("credit_builder", {"months_accrued": 8, "persona_id": persona_id}))
-    if p["visa"] in ("E-9", "D-2"):
-        plan.append(("compliance_reason", {"check_type": "visa_work_eligibility", "persona_id": persona_id}))
-    form_id = "departure_insurance_claim" if p["visa"] == "E-9" else "alien_registration_renewal"
-    plan.append(("form_autofill", {"form_id": form_id, "persona_id": persona_id}))
-    plan.append(("perception_parse", {"persona_id": persona_id}))
-    return plan
 
 
 def test_count_and_unique_ids():
@@ -121,7 +97,7 @@ def test_active_plan_non_empty_and_runnable():
     """active_plan이 전원에 대해 빈 리스트가 아니고 실행해도 무예외다."""
     ps = _make()
     for pid in ps:
-        plan = _active_plan(pid)
+        plan = active_plan(pid)
         assert plan, f"{pid} 빈 plan"
         for name, args in plan:
             assert name in TOOL_REGISTRY

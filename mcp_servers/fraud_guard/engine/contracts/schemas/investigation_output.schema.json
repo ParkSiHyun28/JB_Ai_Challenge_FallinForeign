@@ -1,0 +1,235 @@
+{
+  "definitions": {
+    "EvidenceCard": {
+      "description": "코드가 만든 원증거 카드. LLM 은 id 를 참조만 한다.",
+      "properties": {
+        "fact": {
+          "title": "Fact",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "fact",
+        "source"
+      ],
+      "title": "EvidenceCard",
+      "type": "object"
+    },
+    "GeneratedBy": {
+      "description": "An enumeration.",
+      "enum": [
+        "template",
+        "live_claude",
+        "cached_claude",
+        "live_openai"
+      ],
+      "title": "GeneratedBy",
+      "type": "string"
+    },
+    "InvestigationHypothesis": {
+      "description": "가설은 단정이 아니라 evidence_ids 에 묶인 낮은 확신 후보로만 둔다.",
+      "properties": {
+        "confidence": {
+          "default": "low",
+          "title": "Confidence",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "default": "code",
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "default": "hypothesis",
+          "title": "Status",
+          "type": "string"
+        },
+        "supporting_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supporting Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "supporting_evidence_ids"
+      ],
+      "title": "InvestigationHypothesis",
+      "type": "object"
+    },
+    "InvestigationQuestion": {
+      "description": "확정/반증을 위한 다음 확인 질문. 조사관 harness 의 주역.",
+      "properties": {
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "purpose",
+        "evidence_ids"
+      ],
+      "title": "InvestigationQuestion",
+      "type": "object"
+    }
+  },
+  "description": "보류/검토 거래 1건에 대한 근거 기반 조사관 리포트.",
+  "properties": {
+    "case_summary": {
+      "title": "Case Summary",
+      "type": "string"
+    },
+    "confidence": {
+      "title": "Confidence",
+      "type": "string"
+    },
+    "customer_id": {
+      "title": "Customer Id",
+      "type": "string"
+    },
+    "evidence": {
+      "title": "Evidence",
+      "type": "object"
+    },
+    "evidence_hash": {
+      "title": "Evidence Hash",
+      "type": "string"
+    },
+    "generated_by": {
+      "$ref": "#/definitions/GeneratedBy"
+    },
+    "hypotheses": {
+      "items": {
+        "$ref": "#/definitions/InvestigationHypothesis"
+      },
+      "title": "Hypotheses",
+      "type": "array"
+    },
+    "key_evidence": {
+      "items": {
+        "$ref": "#/definitions/EvidenceCard"
+      },
+      "title": "Key Evidence",
+      "type": "array"
+    },
+    "llm_status": {
+      "title": "Llm Status",
+      "type": "string"
+    },
+    "llm_suggested_hypotheses": {
+      "default": [],
+      "items": {
+        "$ref": "#/definitions/InvestigationHypothesis"
+      },
+      "title": "Llm Suggested Hypotheses",
+      "type": "array"
+    },
+    "needed_checks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Needed Checks",
+      "type": "array"
+    },
+    "recommended_action": {
+      "title": "Recommended Action",
+      "type": "string"
+    },
+    "recommended_next_action": {
+      "title": "Recommended Next Action",
+      "type": "string"
+    },
+    "repair_warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Repair Warnings",
+      "type": "array"
+    },
+    "risk_narrative": {
+      "title": "Risk Narrative",
+      "type": "string"
+    },
+    "suspected_type": {
+      "title": "Suspected Type",
+      "type": "string"
+    },
+    "tx_id": {
+      "title": "Tx Id",
+      "type": "string"
+    },
+    "verification_questions": {
+      "items": {
+        "$ref": "#/definitions/InvestigationQuestion"
+      },
+      "title": "Verification Questions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tx_id",
+    "case_summary",
+    "risk_narrative",
+    "key_evidence",
+    "hypotheses",
+    "verification_questions",
+    "recommended_next_action",
+    "confidence",
+    "evidence",
+    "evidence_hash",
+    "generated_by",
+    "llm_status",
+    "suspected_type",
+    "recommended_action",
+    "needed_checks"
+  ],
+  "title": "InvestigationOutput",
+  "type": "object"
+}

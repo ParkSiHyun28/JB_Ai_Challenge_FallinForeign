@@ -8,16 +8,28 @@ cd "$(dirname "$0")"
 echo "=== LifeRoad 시연 서버 켜는 중 ==="
 echo ""
 
-# 백엔드 띄우기(백그라운드)
-.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload &
+# 가상환경이 없으면 원인 불명 오류 대신 안내를 준다.
+if [ ! -x ".venv/bin/uvicorn" ]; then
+  echo "[오류] .venv 가상환경이 없습니다."
+  echo "  처음이면 '시연_시작_맥.command'를 더블클릭하세요. 설치까지 자동으로 해 줍니다."
+  read -n 1 -s
+  exit 1
+fi
+
+# 백엔드 띄우기(백그라운드). 시연은 이 컴퓨터에서만 접속하므로 127.0.0.1에 묶는다.
+.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload &
 BACK_PID=$!
 
 # 프론트 띄우기(백그라운드)
 .venv/bin/python -m http.server 8000 -d web &
 FRONT_PID=$!
 
-# 창 닫으면 두 서버 같이 정리
-trap "kill $BACK_PID $FRONT_PID 2>/dev/null" EXIT
+# 기업 관점 이상탐지 관제 콘솔(정적, 8002)
+.venv/bin/python -m http.server 8002 -d fraud_console &
+FRAUD_PID=$!
+
+# 창 닫으면 서버 3개 같이 정리
+trap "kill $BACK_PID $FRONT_PID $FRAUD_PID 2>/dev/null" EXIT
 
 # 백엔드 기동 대기
 sleep 2

@@ -1,0 +1,57 @@
+{
+  "definitions": {
+    "AlertAction": {
+      "description": "결정 레벨(오름차순 심각도). core.schema.Action 리터럴과 값이 1:1.",
+      "enum": [
+        "allow",
+        "review",
+        "soft_block"
+      ],
+      "title": "AlertAction",
+      "type": "string"
+    }
+  },
+  "description": "탐지 1건 결과 — score_transaction / detect_account_takeover 표준 출력.\n\nrisk_score 주의: 두 축(룰=페널티공간 vs IF=분위공간)의 **표시용 집계**(max)다.\n스케일이 다르므로 축을 가로지르는 절대 비교/우선순위에 직접 쓰지 말 것 —\n결정은 action 으로 이미 끝났다(분위수는 모델축 FPR 만 통제).",
+  "properties": {
+    "action": {
+      "$ref": "#/definitions/AlertAction"
+    },
+    "explanation": {
+      "default": {},
+      "title": "Explanation",
+      "type": "object"
+    },
+    "model_score": {
+      "title": "Model Score",
+      "type": "number"
+    },
+    "risk_score": {
+      "title": "Risk Score",
+      "type": "number"
+    },
+    "rule_score": {
+      "title": "Rule Score",
+      "type": "number"
+    },
+    "triggered_rules": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Triggered Rules",
+      "type": "array"
+    },
+    "tx_id": {
+      "title": "Tx Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tx_id",
+    "rule_score",
+    "risk_score",
+    "action"
+  ],
+  "title": "AlertOutput",
+  "type": "object"
+}

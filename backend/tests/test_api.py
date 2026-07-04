@@ -78,16 +78,16 @@ def test_intro_lang_auto_falls_back_to_ko(monkeypatch):
     assert captured["lang"] == "ko"
 
 
-def test_intro_unknown_persona_falls_back(monkeypatch):
-    captured = {}
+def test_intro_unknown_persona_returns_400():
+    # 알 수 없는 페르소나를 조용히 다른 사람으로 바꾸지 않는다. 400으로 드러낸다.
+    r = client.get("/intro?persona=nonexistent&lang=ko")
+    assert r.status_code == 400
 
-    def fake_recommend(persona_id, reply_lang, exclude_tools=None):
-        captured["persona"] = persona_id
-        return ("ok", ["a"])
 
-    monkeypatch.setattr(core, "ai_recommend_actions", fake_recommend)
-    client.get("/intro?persona=nonexistent&lang=ko")
-    assert captured["persona"] == "minh"  # 폴백
+def test_chat_unknown_persona_returns_400():
+    body = {"persona": "nonexistent", "lang": "ko", "intent": "테스트", "is_action": True}
+    r = client.post("/chat", json=body)
+    assert r.status_code == 400
 
 
 def test_intro_lang_en(monkeypatch):
@@ -103,7 +103,7 @@ def test_intro_lang_en(monkeypatch):
     assert "help" in r.json()["header"].lower()  # START_HEADER en
 
 
-def _fake_stream(user_text, system, run_tool, on_step=None, history=None):
+def _fake_stream(user_text, system, run_tool, on_step=None, history=None, model=None):
     """가짜 run_chat_stream. on_step 1회 + 토큰 몇 개 + <<NEXT>> 라벨."""
     # tool 단계 1회 보고
     if on_step:
@@ -140,7 +140,7 @@ def test_chat_sse_emits_step_token_final(monkeypatch):
 
 
 def test_chat_sse_done_marker(monkeypatch):
-    def fake(user_text, system, run_tool, on_step=None, history=None):
+    def fake(user_text, system, run_tool, on_step=None, history=None, model=None):
         for tok in ["끝났습니다.", " <<DONE>>"]:
             yield tok
 
@@ -157,7 +157,7 @@ def test_chat_sse_done_marker(monkeypatch):
 
 
 def test_chat_sse_error(monkeypatch):
-    def fake(user_text, system, run_tool, on_step=None, history=None):
+    def fake(user_text, system, run_tool, on_step=None, history=None, model=None):
         raise RuntimeError("ANTHROPIC_API_KEY 없음")
         yield  # 제너레이터 표시
 
@@ -171,3 +171,68 @@ def test_chat_sse_error(monkeypatch):
     import json as _j
     err_data = _j.loads(next(d for e, d in events if e == "error"))
     assert "API 키" in err_data["message"]
+
+
+# ---------------------------------------------------------------------------
+# 신청서 PDF 다운로드
+# ---------------------------------------------------------------------------
+
+def test_attach_download_adds_url_without_mutating_original():
+    card = {"icon": "", "head": "h", "body": "b", "metric": "m"}
+    numbers = {"output_pdf_path": "/tmp/any/minh_pension_return_claim_filled.pdf"}
+    out = core.attach_download(card, numbers)
+    assert out["download_url"] == "/download/minh_pension_return_claim_filled.pdf"
+    assert "download_url" not in card  # 원본 비변형
+
+
+def test_attach_download_passthrough_when_no_pdf():
+    card = {"icon": "", "head": "h", "body": "b", "metric": "m"}
+    assert core.attach_download(card, {}) is card
+    assert core.attach_download(None, {"output_pdf_path": "/tmp/x.pdf"}) is None
+
+
+def test_download_filename_korean():
+    assert core.download_filename("minh_pension_return_claim_filled.pdf") == "국민연금 반환일시금 신청서.pdf"
+    assert core.download_filename("unknown.pdf") == "unknown.pdf"
+
+
+def test_download_rejects_bad_filename():
+    assert client.get("/download/evil.txt").status_code == 400
+    assert client.get("/download/..%2Fsecret.pdf").status_code in (400, 404)
+
+
+def test_download_404_when_missing():
+    r = client.get("/download/nobody_nonexistent_form_filled.pdf")
+    assert r.status_code == 404
+
+
+def test_download_serves_generated_pdf():
+    # 실제로 신청서를 생성한 뒤 그 파일을 내려받는다 (전 구간 검증)
+    result = core.run_tool("form_autofill", {"persona_id": "minh", "form_id": "pension_return_claim"})
+    import os as _os
+    fname = _os.path.basename(result["numbers"]["output_pdf_path"])
+    r = client.get(f"/download/{fname}")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:5] == b"%PDF-"
+    # 받는 사람용 한글 파일명 (RFC 5987 filename*)
+    assert "content-disposition" in r.headers
+    assert "attachment" in r.headers["content-disposition"]
+
+
+def test_chat_step_card_carries_download_url(monkeypatch):
+    """form_autofill을 부르는 가짜 스트림에서 step 카드에 download_url이 실리는지."""
+    def fake(user_text, system, run_tool, on_step=None, history=None, model=None):
+        if on_step:
+            out = run_tool("form_autofill", {"persona_id": "minh", "form_id": "pension_return_claim"})
+            on_step("tool_call", {"name": "form_autofill", "args": {}, "output": out})
+        yield "신청서를 작성했습니다."
+
+    monkeypatch.setattr(backend_main, "run_chat_stream", fake)
+    body = {"persona": "minh", "lang": "ko", "intent": "신청서 작성", "is_action": True}
+    with client.stream("POST", "/chat", json=body) as r:
+        raw = "".join(chunk for chunk in r.iter_text())
+    events = _parse_sse(raw)
+    import json as _j
+    step_data = _j.loads(next(d for e, d in events if e == "step"))
+    assert step_data["card"]["download_url"] == "/download/minh_pension_return_claim_filled.pdf"

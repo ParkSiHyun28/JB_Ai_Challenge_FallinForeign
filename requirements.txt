@@ -1,6 +1,5 @@
+# Claude 전용 (채팅 Haiku / 서류 Sonnet 2모델)
 anthropic>=0.40.0
-# Gemini는 openai SDK의 OpenAI 호환 엔드포인트로 호출하므로 google 패키지가 필요 없다.
-openai>=1.40.0
 mcp>=1.0.0
 # HTML 프론트 + FastAPI 백엔드 구조. streamlit은 폐기.
 fastapi>=0.115.0
@@ -8,3 +7,12 @@ uvicorn[standard]>=0.30.0
 sse-starlette>=2.0.0
 pytest>=8.0.0
 python-dotenv>=1.0.0
+# 서류행정: PDF 좌표 채우기(신청서 자동작성). OCR은 제거됨.
+pymupdf>=1.24.0
+pillow>=10.0.0
+# 사기탐지 엔진(mcp_servers/fraud_guard/engine): 세그먼트별 Isolation Forest 정상분포 학습과
+# Local-DIFFI 설명. 학습모델 baseline.joblib 을 역직렬화해 실시간 채점한다.
+scikit-learn>=1.5.0
+joblib>=1.4.0
+PyYAML>=6.0
+numpy>=1.26.0

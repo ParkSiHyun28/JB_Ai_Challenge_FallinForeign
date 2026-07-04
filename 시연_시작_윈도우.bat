@@ -48,10 +48,11 @@ if "%PYBIN%"=="" (
   )
 )
 
-REM 자동설치를 건너뛰었거나 실패해 여전히 없으면 종료
+REM 자동설치를 건너뛰었거나 실패해 여전히 없으면 재탐지 후 종료
+REM (블록 안에서는 지연 확장 !PYBIN!을 써야 방금 set한 값이 보인다)
 if "%PYBIN%"=="" (
   where python >nul 2>&1 && set PYBIN=python
-  if "%PYBIN%"=="" where py >nul 2>&1 && set PYBIN=py
+  if "!PYBIN!"=="" where py >nul 2>&1 && set PYBIN=py
 )
 if "%PYBIN%"=="" (
   echo.
@@ -70,6 +71,8 @@ if not exist ".venv" (
   %PYBIN% -m venv .venv
   if errorlevel 1 (
     echo [오류] 가상환경 생성 실패. 파이썬 버전을 확인하세요.
+    echo   Microsoft Store 연결용 가짜 python이 잡혔을 수 있습니다.
+    echo   python.org 설치판을 설치하고 "Add Python to PATH"를 켜세요.
     pause
     exit /b 1
   )
@@ -91,8 +94,9 @@ REM 4) 서버 2개 띄우기 (각각 새 창)
 echo [4/4] 서버 켜는 중...
 echo.
 
-start "LifeRoad 백엔드" .venv\Scripts\uvicorn.exe backend.main:app --host 0.0.0.0 --port 8001
+start "LifeRoad 백엔드" .venv\Scripts\uvicorn.exe backend.main:app --host 127.0.0.1 --port 8001
 start "LifeRoad 프론트" .venv\Scripts\python.exe -m http.server 8000 -d web
+start "LifeRoad 관제콘솔" .venv\Scripts\python.exe -m http.server 8002 -d fraud_console
 
 REM 백엔드 기동 대기 후 브라우저 자동 열기
 timeout /t 3 /nobreak >nul

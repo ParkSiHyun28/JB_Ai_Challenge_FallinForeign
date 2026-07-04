@@ -1,0 +1,47 @@
+{
+  "definitions": {
+    "VisaType": {
+      "description": "체류자격. 초기 대상(우선): 외국인 근로자 E-9, 유학생 D-2.\n\n나머지는 실재하는 체류자격으로, 미지정 값은 검증에서 명확히 실패시킨다.",
+      "enum": [
+        "E-9",
+        "D-2",
+        "D-4",
+        "E-7",
+        "F-2",
+        "F-4",
+        "F-5",
+        "F-6",
+        "H-2"
+      ],
+      "title": "VisaType",
+      "type": "string"
+    }
+  },
+  "description": "서류팀에서 받을 비자 입력. dict→VisaInput 검증 통과/실패가 명확해야 한다.",
+  "properties": {
+    "customer_id": {
+      "title": "Customer Id",
+      "type": "string"
+    },
+    "nationality": {
+      "title": "Nationality",
+      "type": "string"
+    },
+    "residency_end_date": {
+      "format": "date",
+      "title": "Residency End Date",
+      "type": "string"
+    },
+    "visa_type": {
+      "$ref": "#/definitions/VisaType"
+    }
+  },
+  "required": [
+    "customer_id",
+    "visa_type",
+    "residency_end_date",
+    "nationality"
+  ],
+  "title": "VisaInput",
+  "type": "object"
+}

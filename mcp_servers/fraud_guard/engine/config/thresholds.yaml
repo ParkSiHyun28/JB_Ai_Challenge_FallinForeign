@@ -1,0 +1,36 @@
+# config/thresholds.yaml — L2/L3 임계값 정책
+# =============================================================================
+# TASK_02 에서 core/baseline.py·decision.py·takeover.py 가 로드한다. (현재 스테이징)
+# 핵심 명제(IMPLEMENTATION.md 5장): 분위수는 FPR(오탐)만 통제하고,
+# Recall 은 라벨로 PR 커브를 그려 별도 측정한다. "99분위 = Recall 0.9"는 금지.
+# =============================================================================
+
+# --- L3 결정 임계: 정상 점수 분위수 (그룹별 자동 → FPR 통제) ---
+baseline_quantiles:
+  review: 0.95        # [임의 시작값] 정상 점수 95분위 = 정상의 5%만 검토
+  soft_block: 0.99    # [임의 시작값] 99분위 = 정상의 1%만 보류
+
+# --- L3 룰 축 → 액션 (룰 임계는 분위수 아님; 페널티 누적 점수의 결정 규칙) ---
+#   OR 앙상블: 최종 액션 = max(룰 액션, 모델 액션). rules.yaml 페널티 스케일에 맞춤.
+rule_action:
+  review_score: 0.30      # [임의] 룰 누적 >= 0.30 → review
+  soft_block_score: 0.60  # [임의] 룰 누적 >= 0.60 → soft_block
+
+# --- L2 Isolation Forest ---
+isolation_forest:
+  n_estimators: 200     # [임의]
+  max_samples: 256      # [STAT] IF 원논문(Liu 2008) 트리당 ψ≈256 수렴
+  contamination: 0.02   # [임의] 학습은 정상만 → 명목값
+  random_state: 42      # 재현성 고정
+
+# --- detect_account_takeover: D-day 지수 가중 boost = base * exp(-k * days_left) ---
+dday_takeover:
+  base: 0.25            # [임의] D-0 최대 가중
+  k: 0.15               # [임의] 감쇠계수 — 민감도 분석으로 강건성만 주장(순환논리 회피)
+  window_days: 30       # [임의] 0<=days_left<=window 에서만 boost 적용
+  soft_block_at: 0.70   # [임의] boost 후 risk 가 이 값 이상이면 soft_block 승격
+
+# --- 그룹 표본 하한 / 꼬리 분위수 모니터링(IMPLEMENTATION.md 6-①) ---
+monitoring:
+  min_samples_per_group: 256   # [임의] 이하면 분위수 추정 불확실 → 경고
+  bootstrap_ci: 0.95           # 꼬리 분위수 부트스트랩 신뢰수준

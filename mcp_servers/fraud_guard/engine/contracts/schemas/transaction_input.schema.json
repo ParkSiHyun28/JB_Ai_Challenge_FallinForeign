@@ -1,0 +1,85 @@
+{
+  "definitions": {
+    "TransactionChannel": {
+      "description": "core.schema.Channel 리터럴과 값이 1:1.",
+      "enum": [
+        "domestic",
+        "remittance",
+        "atm"
+      ],
+      "title": "TransactionChannel",
+      "type": "string"
+    }
+  },
+  "description": "거래 입력 계약. dict→TransactionInput 검증 통과 후 core.Transaction 으로 변환.",
+  "properties": {
+    "amount": {
+      "title": "Amount",
+      "type": "number"
+    },
+    "balance_before": {
+      "default": 0.0,
+      "title": "Balance Before",
+      "type": "number"
+    },
+    "balance_drawdown_ratio": {
+      "default": 0.0,
+      "title": "Balance Drawdown Ratio",
+      "type": "number"
+    },
+    "channel": {
+      "$ref": "#/definitions/TransactionChannel"
+    },
+    "counterparty_country": {
+      "title": "Counterparty Country",
+      "type": "string"
+    },
+    "customer_id": {
+      "title": "Customer Id",
+      "type": "string"
+    },
+    "device_id": {
+      "title": "Device Id",
+      "type": "string"
+    },
+    "ip_country": {
+      "title": "Ip Country",
+      "type": "string"
+    },
+    "is_new_device": {
+      "default": false,
+      "title": "Is New Device",
+      "type": "boolean"
+    },
+    "timestamp": {
+      "title": "Timestamp",
+      "type": "number"
+    },
+    "tx_id": {
+      "title": "Tx Id",
+      "type": "string"
+    },
+    "tx_velocity_24h": {
+      "default": 0,
+      "title": "Tx Velocity 24H",
+      "type": "integer"
+    },
+    "tz_offset_minutes": {
+      "default": 540,
+      "title": "Tz Offset Minutes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "tx_id",
+    "customer_id",
+    "timestamp",
+    "amount",
+    "channel",
+    "counterparty_country",
+    "device_id",
+    "ip_country"
+  ],
+  "title": "TransactionInput",
+  "type": "object"
+}

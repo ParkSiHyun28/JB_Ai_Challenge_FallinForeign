@@ -33,7 +33,11 @@ TOOL_SCHEMAS = {
     },
     "pension_estimator": {
         "name": "pension_estimator",
-        "description": "국민연금 반환일시금 예상액을 산출한다. 국적별 사회보장협정 체결 여부를 반영한다.",
+        "description": (
+            "국민연금 반환일시금 수령 가능 여부를 국적과 비자 기준으로 판정하고 "
+            "예상 수령액(납부보험료+이자)을 공단 공식으로 계산한다. "
+            "매달 공제돼 온 보험료를 귀국 시 돌려받는 금액이다."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {**_PERSONA_PROP},
@@ -51,7 +55,10 @@ TOOL_SCHEMAS = {
     },
     "remit_optimizer": {
         "name": "remit_optimizer",
-        "description": "송금 수수료와 경로를 비교해 최저비용 경로를 안내한다.",
+        "description": (
+            "송금 경로별 진짜 총비용(고정수수료+환율마진)을 비교해 최저 경로와 "
+            "귀국 전까지의 총 절감액을 계산한다."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {**_PERSONA_PROP},
@@ -60,16 +67,13 @@ TOOL_SCHEMAS = {
     },
     "credit_builder": {
         "name": "credit_builder",
-        "description": "월세와 통신비와 공과금 납부 이력을 대안신용 데이터로 축적한다. 축적 개월 기준 프로필 형성도를 추정한다.",
+        "description": (
+            "통신비와 공과금과 월세 납부 이력의 대안신용 축적 단계를 계산한다. "
+            "축적 개월은 페르소나 데이터에서 자동 도출하며 다음 가점 단계 도달 시점을 예고한다."
+        ),
         "input_schema": {
             "type": "object",
-            "properties": {
-                **_PERSONA_PROP,
-                "months_accrued": {
-                    "type": "integer",
-                    "description": "현재까지 축적된 납부 이력 개월 수. 기본 0.",
-                },
-            },
+            "properties": {**_PERSONA_PROP},
             "required": ["persona_id"],
         },
     },

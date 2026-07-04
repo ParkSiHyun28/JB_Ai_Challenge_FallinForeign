@@ -482,7 +482,7 @@ html,body{background:#5b6275;font-family:'Pretendard',-apple-system,sans-serif;
     <div class="arch-arrow">
       <svg width="20" height="38" viewBox="0 0 20 38" fill="none" stroke="#9AA3BE" stroke-width="2"><path d="M10 0v30"/><path d="M4 26l6 8 6-8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <div class="arch-box" style="background:#1B395C">공용 Streamlit UI</div>
+    <div class="arch-box" style="background:#1B395C">웹 프론트(web/) + FastAPI 백엔드</div>
     <div class="arch-arrow">
       <svg width="20" height="38" viewBox="0 0 20 38" fill="none" stroke="#9AA3BE" stroke-width="2"><path d="M10 0v30"/><path d="M4 26l6 8 6-8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
@@ -675,8 +675,8 @@ html,body{background:#5b6275;font-family:'Pretendard',-apple-system,sans-serif;
       <div class="step-cap" style="background:#142551"><div class="en">③ Action</div><div class="ko">신청서 작성</div></div>
       <div class="step-body">
         <p>PDF 필드 좌표 매핑 방식으로 정부 신청서 자동완성</p>
-        <p class="hl">평균 79%, 수십 분 → 수십 초</p>
-        <p class="hl">서류 자동완성 77%로 반려율 감소에 따른 외국인 대출 연체율 개선</p>
+        <p class="hl">4종 평균 77%, 수십 분 → 수십 초</p>
+        <p class="hl">자동완성으로 반려율 감소, 외국인 대출 연체율 개선</p>
       </div>
     </div>
   </div>
@@ -767,7 +767,7 @@ html,body{background:#5b6275;font-family:'Pretendard',-apple-system,sans-serif;
       <div class="dt-v">
         <p>▸ LLM provider switch (.env 한 줄: Claude, Gemini, Groq, Ollama)</p>
         <p>▸ MCP 부문 모듈 + Rule Engine + Isolation Forest(scikit-learn)</p>
-        <p>▸ Clova OCR V2, PyMuPDF(PDF 자동작성), Streamlit</p>
+        <p>▸ FastAPI 백엔드 + 정적 웹 UI(SSE 스트리밍) / 발전형: Clova OCR V2, PyMuPDF(PDF 자동작성)</p>
       </div>
     </div>
     <div class="dt-row alt">
@@ -790,7 +790,7 @@ html,body{background:#5b6275;font-family:'Pretendard',-apple-system,sans-serif;
   <div class="ubar"></div>
   <div class="sub" style="top:108px;font-weight:700">한 사람의 귀국기를 세 부문이 함께 처리한다</div>
   <div style="position:absolute;left:56px;top:160px;right:56px;bottom:90px;display:flex;flex-direction:column;gap:16px">
-    <div class="scn" style="flex:1;margin:0"><div class="scn-n" style="background:var(--navy)">1</div><div class="scn-body"><div class="scn-t">능동 점검 (자산)</div><div class="scn-d">출국만기보험 1,120만 원, 소멸시효 3년, 반환일시금 약 496만 원, 송금 변경 시 연 42.6만 원 절감을 먼저 카드로 안내</div></div></div>
+    <div class="scn" style="flex:1;margin:0"><div class="scn-n" style="background:var(--navy)">1</div><div class="scn-body"><div class="scn-t">능동 점검 (자산)</div><div class="scn-d">출국만기보험 1,120만 원, 소멸시효 3년, 반환일시금 약 428만 원, 송금 변경 시 연 42.6만 원 절감을 먼저 카드로 안내</div></div></div>
     <div class="scn" style="flex:1;margin:0"><div class="scn-n" style="background:var(--navy)">2</div><div class="scn-body"><div class="scn-t">대리 작성 (서류)</div><div class="scn-d">반환일시금 청구서 14항목 중 11개 자동작성(79%) → 서명, 계좌 3개만 본인 확인, 수십 분이 수십 초로</div></div></div>
     <div class="scn" style="flex:1;margin:0"><div class="scn-n" style="background:var(--navy)">3</div><div class="scn-body"><div class="scn-t">위험 차단 (사기탐지)</div><div class="scn-d">출국 6일 전 신규 기기 홍콩 송금 → 보류 + 베트남어 본인확인 / 매월 정기 송금은 통과(오탐 방지)</div></div></div>
     <div class="scn" style="flex:1;margin:0"><div class="scn-n" style="background:var(--navy)">4</div><div class="scn-body"><div class="scn-t">작업 매듭</div><div class="scn-d">종결 신호와 함께 남은 작업 재추천, 완료 건은 제외</div></div></div>
@@ -851,7 +851,7 @@ html,body{background:#5b6275;font-family:'Pretendard',-apple-system,sans-serif;
   <div style="position:absolute;left:56px;top:148px;right:56px;bottom:92px;display:grid;grid-template-columns:1fr 1fr;gap:28px">
     <div class="panel lt">
       <h3>기대효과</h3>
-      <div class="pitem"><div class="t">자산 형성</div><div class="d">수령 누락 1인 약 1,600만 원 방지, 송금 연 42.6만 원 절감, 출국 전 정상 상환으로 연체율 개선</div></div>
+      <div class="pitem"><div class="t">자산 형성</div><div class="d">수령 누락 1인 약 1,550만 원 방지, 송금 연 42.6만 원 절감, 출국 전 정상 상환으로 연체율 개선</div></div>
       <div class="pitem"><div class="t">금융 접근성</div><div class="d">오탐(정상거래 부당차단) 감소로 거래 마찰 완화, 모국어 본인확인으로 피싱 피해 예방</div></div>
       <div class="pitem"><div class="t">업무 효율</div><div class="d">서류 OCR 자동 대조, FDS 보류건만 상신, 만기 경보 자동화로 외국인 응대 시간 단축</div></div>
       <div class="pitem"><div class="t">수익 기회</div><div class="d">유학생 신용 선점, E-7 우량 고객, 송금과 대출과 신용 교차판매</div></div>

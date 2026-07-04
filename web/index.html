@@ -3,56 +3,75 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LifeRoad AI Agent 시연</title>
+<title>My LifeRoad - JB금융그룹 Fin:AI Challenge</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=20260705" />
 </head>
 <body>
   <div class="stage">
 
     <div class="topbar">
       <div class="brand">
-        <div class="brand-mark">LR</div>
-        <div class="brand-name"><b>LifeRoad</b> AI Agent</div>
-        <div class="brand-sub">외국인 정착 도우미 시연 데모</div>
+        <img class="jb-logo" src="assets/jb-signature.png" alt="JB금융그룹" />
+        <div class="brand-divider"></div>
+        <div class="brand-name"><b>My LifeRoad</b> AI Agent</div>
       </div>
-      <div class="sync-pill" id="sync-pill"><span class="dot"></span><span id="sync-text">앱 준비 중</span></div>
+      <div class="topbar-right">
+        <div class="mode-seg" id="mode-seg">
+          <button data-mode="customer" class="on">고객 관점</button>
+          <button data-mode="bank">기업 관점</button>
+        </div>
+        <div class="sync-pill" id="sync-pill"><span class="dot"></span><span id="sync-text">앱 준비 중</span></div>
+      </div>
     </div>
 
-    <div class="layout">
-      <div class="left-col">
-        <div class="controls">
-          <div class="ctrl-group">
-            <div class="ctrl-label">페르소나</div>
-            <select id="persona-select">
-              <option value="minh">베트남 / 응웬 반 민 (E-9)</option>
-              <option value="suman">네팔 / 수만 라이 (D-2)</option>
-            </select>
-          </div>
-          <div class="ctrl-divider"></div>
-          <div class="ctrl-group">
-            <div class="ctrl-label">답변 언어</div>
-            <select id="lang-select">
-              <option value="auto">자동 감지 (질문 언어 따라감)</option>
-              <option value="ko">한국어</option>
-              <option value="en">영어</option>
-              <option value="vi">베트남어</option>
-              <option value="ne">네팔어</option>
-            </select>
+    <div class="persona-strip">
+      <div class="ps-persona" id="persona-strip">페르소나 로딩 중…</div>
+      <div class="ps-lang">
+        <span class="ctrl-label">페르소나</span>
+        <select id="persona-select">
+          <option value="minh">베트남 / 응웬 반 민 (E-9)</option>
+          <option value="suman">네팔 / 수만 라이 (D-2)</option>
+        </select>
+        <span class="ctrl-label">답변 언어</span>
+        <select id="lang-select">
+          <option value="auto">자동 감지 (질문 언어 따라감)</option>
+          <option value="ko">한국어</option>
+          <option value="en">영어</option>
+          <option value="vi">베트남어</option>
+          <option value="ne">네팔어</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="duo mode-customer" id="duo">
+
+      <section class="pane pane-fraud" id="pane-fraud">
+        <!-- 기업 관점: fraud-guard FDS 모니터링 콘솔 (fraud_guard/dashboard, 게이트웨이 8002) -->
+        <div class="fraud-shell">
+          <iframe id="fraud-frame" title="fraud-guard 모니터링 콘솔" loading="lazy"></iframe>
+          <!-- 이상탐지 콘솔(fraud_guard)이 아직 없어 iframe 대신 안내 템플릿을 보여준다.
+               config.js 의 FRAUD_CONSOLE_URL 이 채워지면 iframe 이 콘솔을 덮어 표시한다. -->
+          <div class="fraud-placeholder" id="fraud-placeholder">
+            <div class="fp-badge">기업 관점 - 이상거래 관제 콘솔</div>
+            <div class="fp-title">이상탐지 콘솔 연동 예정</div>
+            <div class="fp-desc">이 자리에 은행 내부 FDS 관제 화면이 들어옵니다.<br />fraud_guard 코드를 연결하면 이 템플릿이 실제 콘솔로 자동 전환됩니다.</div>
+            <div class="fp-hint"><b>F</b> 키를 누르면 이 화면에서 고객 관점으로 넘어가는 본인확인 크로스오버가 재생됩니다.</div>
           </div>
         </div>
+      </section>
 
-        <div class="persona" id="persona-card"></div>
-      </div>
-
-      <div class="right-col">
+      <section class="pane pane-phone" id="pane-phone">
         <div class="phone-wrap">
           <div class="phone">
             <div class="island"><span class="cam"></span></div>
             <div class="screen">
               <div class="chat-app">
-                <div class="chat-header">대화</div>
+                <div class="chat-header">
+                  <div class="ch-title">My LifeRoad</div>
+                  <div class="ch-sub">JB금융그룹 Fin:AI Challenge</div>
+                </div>
                 <div class="chat-scroll" id="chat-scroll"></div>
                 <div class="chat-input-bar">
                   <input
@@ -70,12 +89,19 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+    </div>
+
+    <div class="mode-overlay" id="mode-overlay">
+      <div class="mo-kicker" id="mo-kicker">PERSPECTIVE</div>
+      <div class="mo-title" id="mo-title"></div>
+      <div class="mo-sub" id="mo-sub"></div>
     </div>
 
   </div>
 
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=20260705"></script>
+<script src="app.js?v=20260705"></script>
 </body>
 </html>

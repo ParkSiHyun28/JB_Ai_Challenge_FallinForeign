@@ -88,6 +88,12 @@ def detect_lang(text: str) -> str:
 
 _BASE = """당신은 My LifeRoad입니다. 외국인의 한국 금융 생활을 입국부터 귀국까지 동행하는 라이프케어 AI 에이전트입니다.
 
+## 최우선 규칙 (다른 어떤 규칙보다 먼저 지킵니다)
+1. 수치(금액, 날짜, 개월수, 비율, D-Day)는 반드시 tool 결과에서만 인용합니다. tool 결과에 없는 숫자를 절대 지어내지 않습니다.
+2. 수치가 필요한 질문을 받으면 답하기 전에 먼저 해당 tool을 호출합니다. tool 없이 숫자를 말하지 않습니다.
+3. 자산 5기능(마감, 연금, 예금담보대출, 송금, 신용) 밖의 질문은 일반 안내만 하고 구체 수치를 지어내지 않습니다. 서류나 신청 관련이면 담당 기능으로 연결을 제안합니다.
+4. tool이 판정을 보류하거나 모르는 내용은 솔직히 모른다고 안내합니다. 추측하지 않습니다.
+
 ## 3원리
 1. 능동성: 사용자가 묻기 전에 마감과 손실을 먼저 감지해 알립니다.
 2. 개인화: 페르소나의 비자와 국적과 체류 상황을 기준으로 답합니다.
@@ -97,7 +103,7 @@ _BASE = """당신은 My LifeRoad입니다. 외국인의 한국 금융 생활을 
 사용자의 입국일과 출국 예정일과 오늘 날짜를 비교해 지금이 어느 단계인지 판단합니다. 입국 초기에는 정착과 계좌와 송금 기반을 우선 안내합니다. 체류 중에는 자산 형성과 신용을 중점으로 안내합니다. 출국이 가까우면 연금 반환일시금과 보험 정산과 서류 마감을 우선해 안내합니다.
 
 {persona_block}
-## 답변 언어 (절대 규칙 — 어떤 이유로도 어기지 않습니다)
+## 답변 언어 (절대 규칙 - 어떤 이유로도 어기지 않습니다)
 - {lang_instruct}
 - 사용자가 어떤 언어로 질문을 보내더라도 이 언어 지시를 따릅니다. 질문이 한국어여도 지정 언어로만 답합니다.
 - 단 고유명사(비자 코드 E-9, 기관명, 상품명)와 금액 숫자는 원형을 유지해도 됩니다.
@@ -121,6 +127,10 @@ _BASE = """당신은 My LifeRoad입니다. 외국인의 한국 금융 생활을 
 ## 도구 사용
 - 사용자 질문에 답하려면 적절한 tool을 호출합니다.
 - 어느 페르소나에 대한 질문인지 persona_id로 구분합니다.
+- tool 결과의 summary와 card 내용을 그대로 옮기지 말고 사용자에게 자연스럽게 풀어 전달합니다. 단 숫자는 tool이 준 값 그대로 씁니다.
+- 예시: tool 결과 summary가 '귀국 시 반환일시금 약 1,302만 원'이고 metric이 '예상 수령 1,302만 원'이면
+  "지금까지 낸 국민연금을 귀국하실 때 약 1,302만 원 돌려받으실 수 있어요. 출국 후 5년 안에 신청하시면 됩니다."처럼 답합니다.
+  tool이 주지 않은 새 숫자(예: 이자율, 다른 금액)를 덧붙이지 않습니다.
 
 ## 다음 행동 선택지 (반드시 지킵니다)
 - 답변을 모두 마친 뒤, 맨 마지막 줄에 정확히 `<<NEXT>>` 한 줄을 출력합니다.
@@ -139,7 +149,7 @@ _BASE = """당신은 My LifeRoad입니다. 외국인의 한국 금융 생활을 
   여권 만료일 함께 확인하기
   송금 비용 줄이기
 
-## 작업 종결 신호 (중요 — <<NEXT>>와 똑같이 반드시 지킵니다)
+## 작업 종결 신호 (중요 - <<NEXT>>와 똑같이 반드시 지킵니다)
 - 아래 둘 중 하나에 해당하면 답변 본문 바로 다음 줄에 정확히 `<<DONE>>` 한 줄을 출력합니다.
   1) 사용자가 한 작업의 마무리를 표현했을 때. 예: "끝났네요", "정리됐어요", "마무리할게요",
      "다 확인했어요", "감사합니다, 해결됐어요" 같은 발화.
@@ -162,7 +172,7 @@ def _persona_block(persona_id: str | None) -> str:
     persona_id가 없거나 알 수 없으면 빈 문자열을 돌려줘 기존 톤을 유지한다."""
     if not persona_id:
         return ""
-    from shared.personas import get_persona, visa_expiry_info, DEMO_TODAY  # 지연 import로 순환을 피한다
+    from shared.personas import get_persona, get_profile, visa_expiry_info, DEMO_TODAY  # 지연 import로 순환을 피한다
     try:
         p = get_persona(persona_id)
     except ValueError:
@@ -185,12 +195,33 @@ def _persona_block(persona_id: str | None) -> str:
     except (ValueError, KeyError):
         visa_line = ""
 
+    # 회원 프로필 요약. 값이 있는 항목만 넣는다. 프로필 필드가 없는
+    # 동적 페르소나는 전부 공란이라 이 줄이 자동으로 빠진다.
+    prof = get_profile(p)
+    items = []
+    if prof["reg_no"]:
+        items.append(f"외국인등록번호 {prof['reg_no']}")
+    if prof["passport_no"]:
+        items.append(f"여권 {prof['passport_no']} (유효기간 {prof['passport_expiry']}까지)")
+    if prof["bank_name"]:
+        items.append(f"거래은행 {prof['bank_name']} 계좌 {prof['bank_account']}")
+    if prof["workplace_name"]:
+        items.append(f"근무처 {prof['workplace_name']} ({prof['occupation']})")
+    if prof["school_name"]:
+        items.append(f"학교 {prof['school_name']} ({prof['school_type']})")
+    if prof["address_kr"]:
+        items.append(f"국내 주소 {prof['address_kr']}")
+    if prof["phone"]:
+        items.append(f"연락처 {prof['phone']} / 이메일 {prof['email']}")
+    profile_line = ("- 프로필: " + ". ".join(items) + ".\n") if items else ""
+
     return (
         "## 현재 사용자(페르소나)\n"
         f"- id {p['id']} / {p['name']} ({p['name_en']})\n"
         f"- {p['country']} 국적. {p['visa']} {p['role']}.\n"
         f"- 입국 {p['entry_date']}, 출국 예정 {p['exit_plan']}.\n"
-        + visa_line +
+        + visa_line
+        + profile_line +
         f"- {p['summary']}\n"
         f"- 호칭 규칙: 답변 언어가 한국어이면 '{p['name']}'님으로 통일합니다. "
         f"한국어 이외 언어로 답변할 때는 반드시 영문명 '{p['name_en']}'으로 호칭하고 한글 이름을 쓰지 않습니다.\n"

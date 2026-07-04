@@ -108,14 +108,19 @@ fi
 echo "[4/4] 서버 켜는 중..."
 echo ""
 
-.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8001 &
+# 시연은 이 컴퓨터에서만 접속하므로 127.0.0.1에 묶는다(공용 와이파이 노출 방지).
+.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8001 &
 BACK_PID=$!
 
 .venv/bin/python -m http.server 8000 -d web &
 FRONT_PID=$!
 
-# 창 닫으면 두 서버 같이 정리
-trap "kill $BACK_PID $FRONT_PID 2>/dev/null" EXIT
+# 기업 관점 이상탐지 관제 콘솔(정적). 메인 화면 iframe이 이 주소를 띄운다.
+.venv/bin/python -m http.server 8002 -d fraud_console &
+FRAUD_PID=$!
+
+# 창 닫으면 서버 3개 같이 정리
+trap "kill $BACK_PID $FRONT_PID $FRAUD_PID 2>/dev/null" EXIT
 
 # 백엔드 기동 대기 후 브라우저 자동 열기
 sleep 3

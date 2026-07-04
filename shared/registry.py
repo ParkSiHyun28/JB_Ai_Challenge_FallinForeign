@@ -1,7 +1,7 @@
 """부문 통합 레지스트리. mcp_servers/ 아래 모든 부문을 자동 발견해 하나로 합친다.
 
 팀원이 규약(CONTRACT.md)에 맞춰 만든 부문 폴더를 mcp_servers/ 아래에 그냥 넣기만 하면
-앱 재시작 시 자동으로 tool 실행, tool 스키마, 능동 모드 트리거가 병합된다.
+앱 재시작 시 자동으로 tool 실행과 tool 스키마가 병합된다.
 SECTIONS 리스트를 손으로 고칠 필요가 없다. (가드레일 tests/test_contract.py와 같은
 pkgutil 자동 발견 방식을 쓴다.)
 
@@ -10,15 +10,19 @@ pkgutil 자동 발견 방식을 쓴다.)
 - mcp_servers/<부문>/schemas.py 에 TOOL_SCHEMAS(dict)
 
 병합 결과 3종:
-- TOOL_REGISTRY: tool 이름 -> 실행 함수 dict (app.py가 실제 호출)
+- TOOL_REGISTRY: tool 이름 -> 실행 함수 dict (backend가 실제 호출)
 - TOOL_SCHEMAS: tool 이름 -> Claude tool use 스키마 dict (llm_provider.py가 LLM에 전달)
-- ACTIVE_TOOLS: 능동 모드에서 선제 호출하는 tool 이름 리스트 (app.py 능동 점검 루프)
+- ACTIVE_TOOLS: 부문이 선언한 능동 모드 후보 tool 이름 리스트.
+  주의: 현재 능동 점검은 backend/core.py의 active_plan이 페르소나 조건으로 직접 계획을
+  만들며 이 병합 리스트를 아직 소비하지 않는다. 새 부문의 능동 점검을 켜려면
+  active_plan을 함께 갱신해야 한다(향후 자동 병합용으로 예약).
 
 tool 이름은 부문 간 고유해야 한다. 충돌 시 import 시점에 ValueError로 즉시 실패한다.
 """
 
 import importlib
 import pkgutil
+import sys
 
 import mcp_servers
 
@@ -43,18 +47,24 @@ def _discover_sections() -> list:
             schemas_mod = importlib.import_module(f"mcp_servers.{dept}.schemas")
         except ModuleNotFoundError:
             schemas_mod = None
+            # 조용히 넘어가면 그 부문 tool이 LLM 대화에서 보이지 않는 원인을 찾기 어렵다.
+            print(
+                f"[registry 경고] mcp_servers/{dept}에 schemas.py가 없다. "
+                f"tool 실행은 되지만 LLM 대화 모드에는 노출되지 않는다.",
+                file=sys.stderr,
+            )
         sections.append((dept, tools_mod, schemas_mod))
     return sections
 
 
-def _merge() -> tuple:
+def _merge(sections: list) -> tuple:
     """발견한 부문을 순회해 세 레지스트리를 병합한다. tool 이름 충돌이면 ValueError."""
     registry: dict = {}
     schemas: dict = {}
     active: list = []
     owner: dict = {}  # tool 이름 -> 소유 부문. 충돌 진단용.
 
-    for dept, tools_mod, schemas_mod in _discover_sections():
+    for dept, tools_mod, schemas_mod in sections:
         for tool_name in tools_mod.TOOL_REGISTRY:
             if tool_name in owner:
                 raise ValueError(
@@ -70,7 +80,10 @@ def _merge() -> tuple:
     return registry, schemas, active
 
 
-# 발견된 부문 이름 목록. 사이드바나 디버그에서 "지금 몇 개 부문이 붙었나" 확인용.
-SECTIONS = [dept for dept, _, _ in _discover_sections()]
+# 발견은 import 시 한 번만 수행한다(중복 스캔 방지).
+_SECTIONS_RAW = _discover_sections()
 
-TOOL_REGISTRY, TOOL_SCHEMAS, ACTIVE_TOOLS = _merge()
+# 발견된 부문 이름 목록. 디버그에서 "지금 몇 개 부문이 붙었나" 확인용.
+SECTIONS = [dept for dept, _, _ in _SECTIONS_RAW]
+
+TOOL_REGISTRY, TOOL_SCHEMAS, ACTIVE_TOOLS = _merge(_SECTIONS_RAW)

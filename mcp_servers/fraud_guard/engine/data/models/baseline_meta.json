@@ -1,0 +1,25 @@
+{
+  "ref_date": "2026-06-05",
+  "data_version": "seed=42 ref=2026-06-05 config=config/segments.yaml",
+  "model_path": "data/models/baseline.joblib",
+  "segments": {
+    "NP:D-2": {
+      "n_samples": 1000,
+      "max_samples": 256,
+      "low_sample": false,
+      "thresholds": {
+        "review": 0.5483033730498783,
+        "soft_block": 0.6089600879188956
+      }
+    },
+    "VN:E-9": {
+      "n_samples": 1000,
+      "max_samples": 256,
+      "low_sample": false,
+      "thresholds": {
+        "review": 0.5685456340117013,
+        "soft_block": 0.6907633775855573
+      }
+    }
+  }
+}

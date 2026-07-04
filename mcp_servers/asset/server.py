@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-from datetime import date
 
 import mcp.types as types
 from mcp.server import Server
@@ -32,9 +31,11 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     if name not in TOOL_REGISTRY:
         raise ValueError(f"unknown tool: {name}")
     func = TOOL_REGISTRY[name]
-    # deadline_radar는 as_of 필수. 없으면 오늘 날짜를 채운다.
+    # deadline_radar는 as_of 필수. 없으면 데모 기준일을 채운다.
+    # backend(core.run_tool)와 같은 기준일을 써서 어느 경로로 돌려도 수치가 같게 한다.
     if name == "deadline_radar" and "as_of" not in arguments:
-        arguments["as_of"] = date.today().isoformat()
+        from shared.personas import DEMO_TODAY_STR
+        arguments["as_of"] = DEMO_TODAY_STR
     result = func(**arguments)
     return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 

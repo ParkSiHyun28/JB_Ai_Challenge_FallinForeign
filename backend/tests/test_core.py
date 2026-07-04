@@ -11,7 +11,24 @@ from backend.core import (
     build_history,
     persona_card,
     run_tool,
+    pick_model,
 )
+from shared.llm_provider import CLAUDE_MODEL_CHAT, CLAUDE_MODEL_DOCS
+
+
+def test_pick_model_routes_docs_to_sonnet():
+    # 서류 관련 발화 → 서류용 모델(Sonnet)
+    assert pick_model("외국인등록증 갱신 신청서 작성해줘") == CLAUDE_MODEL_DOCS
+    assert pick_model("신청서 자동으로 작성하기") == CLAUDE_MODEL_DOCS
+    assert pick_model("서류 뭐 필요해?") == CLAUDE_MODEL_DOCS
+    assert pick_model("PDF로 받고 싶어") == CLAUDE_MODEL_DOCS
+
+
+def test_pick_model_routes_chat_to_haiku():
+    # 일반 대화 → 채팅 모델(Haiku)
+    assert pick_model("연금 얼마나 돌려받아?") == CLAUDE_MODEL_CHAT
+    assert pick_model("송금 비용 줄이기") == CLAUDE_MODEL_CHAT
+    assert pick_model("") == CLAUDE_MODEL_CHAT
 
 
 def test_split_basic_marker():
@@ -25,6 +42,19 @@ def test_split_no_marker():
     body, labels = split_answer_and_actions("그냥 본문")
     assert body == "그냥 본문"
     assert labels == []
+
+
+def test_split_marker_without_body_hides_marker():
+    # 본문 없이 마커로 시작해도 마커가 화면에 노출되면 안 된다
+    body, labels = split_answer_and_actions("<<NEXT>>\n마감 확인")
+    assert "<<NEXT>>" not in body
+    assert labels == []
+
+
+def test_run_tool_does_not_mutate_caller_args():
+    args = {"persona_id": "minh"}
+    run_tool("deadline_radar", args)
+    assert "as_of" not in args  # 호출자 dict 무변형
 
 
 def test_split_partial_marker_hidden():
@@ -87,7 +117,6 @@ def test_active_plan_minh_has_deadline_and_pension():
     assert "deadline_radar" in tools  # E-9
     assert "pension_estimator" in tools  # 협정 미체결 + 납부이력
     assert "form_autofill" in tools  # 항상
-    assert "perception_parse" in tools  # 항상
 
 
 def test_active_plan_suman_has_credit_builder():

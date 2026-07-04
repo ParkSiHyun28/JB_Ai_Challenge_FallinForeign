@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>My LifeRoad — 외국인 생애주기 멀티에이전트 시뮬레이션</title>
+<title>My LifeRoad - 외국인 생애주기 멀티에이전트 시뮬레이션</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
@@ -19,7 +19,7 @@
     --text-sub:    #515869;
     --muted:       #8A91A0;
     --line:        #E6E9EF;
-    /* 에이전트 구분색 (시뮬 고유 기능 — 네이비 계열로 절제) */
+    /* 에이전트 구분색 (시뮬 고유 기능 - 네이비 계열로 절제) */
     --vn:          #C84A4A;
     --np:          #2F6DB0;
     --docs:        #2F6DB0;
@@ -264,18 +264,18 @@
 
 <header class="top">
   <div class="brand">
-    <div class="svc">🛣️ My LifeRoad <small>멀티에이전트 시뮬레이션</small></div>
+    <div class="svc">My LifeRoad <small>멀티에이전트 시뮬레이션</small></div>
     <div class="tag">외국인 입국부터 출국까지 전 과정을 조율하는 AI 에이전트</div>
   </div>
 
   <div class="persona-toggle" id="personaToggle">
     <button class="ptab vn active" data-persona="minh">
-      <span class="pt-name">🇻🇳 응웬 반 민</span>
-      <span class="pt-sub">베트남 E-9 근로자 — 출국 1년 전</span>
+      <span class="pt-name">응웬 반 민</span>
+      <span class="pt-sub">베트남 E-9 근로자 - 출국 1년 전</span>
     </button>
     <button class="ptab np" data-persona="suman">
-      <span class="pt-name">🇳🇵 수만 라이</span>
-      <span class="pt-sub">네팔 D-2 유학생 — 졸업 진로 전</span>
+      <span class="pt-name">수만 라이</span>
+      <span class="pt-sub">네팔 D-2 유학생 - 졸업 진로 전</span>
     </button>
   </div>
 
@@ -288,9 +288,9 @@
         <option value="700">빠르게</option>
       </select>
     </div>
-    <button class="btn ghost" id="stepBtn">▷ 한 단계</button>
-    <button class="btn" id="playBtn">▶ 자동 재생</button>
-    <button class="btn ghost" id="resetBtn">↺ 처음</button>
+    <button class="btn ghost" id="stepBtn">한 단계</button>
+    <button class="btn" id="playBtn">자동 재생</button>
+    <button class="btn ghost" id="resetBtn">처음</button>
   </div>
 </header>
 
@@ -314,7 +314,6 @@
       <div class="phase-strip" id="phaseStrip"><!-- JS 렌더 --></div>
       <div class="bus-feed" id="busFeed">
         <div class="bus-empty">
-          <span class="be-ic">🛰️</span>
           재생을 누르면 오케스트레이터가 세 에이전트를 깨워<br>페르소나의 생애주기 업무를 처리합니다.
         </div>
       </div>
@@ -375,7 +374,7 @@
   // ── 정적 메타 ──
   var AGENT_ORDER = ["orchestrator", "docs", "asset", "fraud"];
   var AGENT_META = {
-    orchestrator: { name: "오케스트레이터", nameEn: "Orchestrator", icon: "🧭", tagline: "사용자 의도를 읽고 세 에이전트에 업무를 배분", tools: [{name:"route_intent",desc:""},{name:"daily_scan",desc:""}], cls: "orch" },
+    orchestrator: { name: "오케스트레이터", nameEn: "Orchestrator", icon: "O", tagline: "사용자 의도를 읽고 세 에이전트에 업무를 배분", tools: [{name:"route_intent",desc:""},{name:"daily_scan",desc:""}], cls: "orch" },
   };
   var PHASES = [
     { key: "arrival", labelMinh: "입국과 첫 정착", labelSuman: "입국과 첫 정착", sub: "ARRIVAL" },
@@ -384,8 +383,8 @@
     { key: "exit", labelMinh: "귀국과 사후", labelSuman: "졸업과 전환", sub: "EXIT" },
   ];
   var PERSONA = {
-    minh: { flag: "🇻🇳", name: "응웬 반 민", lang: "VI", stay: "2022.3 입국 → 2027.1 출국 예정" },
-    suman: { flag: "🇳🇵", name: "수만 라이", lang: "NE", stay: "2023.3 입국 → 2027.2 졸업 예정" },
+    minh: { flag: "VN", name: "응웬 반 민", lang: "VI", stay: "2022.8 입국 → 2027.1 출국 예정" },
+    suman: { flag: "NP", name: "수만 라이", lang: "NE", stay: "2024.3 입국 → 2027.2 졸업 예정" },
   };
 
   // ── 모듈 수집 ──
@@ -401,7 +400,7 @@
       };
     } else {
       // 모듈 미로드 시 플레이스홀더
-      AGENT_META[p] = { name: p + " 에이전트", nameEn: p, icon: "🔁", tagline: "(모듈 로딩 대기)", tools: [], cls: p };
+      AGENT_META[p] = { name: p + " 에이전트", nameEn: p, icon: "-", tagline: "(모듈 로딩 대기)", tools: [], cls: p };
     }
   });
 
@@ -481,7 +480,7 @@
       if (!lk) return;
       var order = AGENT_ORDER.indexOf(id);
       var pos = AGENT_ORDER.indexOf(a);
-      if (id !== "orchestrator" && id !== "user" && pos > 0 && pos <= order) lk.classList.add("live");
+      if (id !== "orchestrator" && pos > 0 && pos <= order) lk.classList.add("live");
       else lk.classList.remove("live");
     });
   }
@@ -524,7 +523,7 @@
     if (step.phase) updatePhaseStrip(step.phase);
 
     var actorName = (AGENT_META[actor] && AGENT_META[actor].name) || (actor === "user" ? "사용자" : actor);
-    var actorIcon = (AGENT_META[actor] && AGENT_META[actor].icon) || (actor === "user" ? "🙂" : "🤖");
+    var actorIcon = (AGENT_META[actor] && AGENT_META[actor].icon) || (actor === "user" ? "U" : "-");
     var toName = toId && AGENT_META[toId] ? AGENT_META[toId].name : (toId === "user" ? "사용자" : null);
 
     var div = document.createElement("div");
@@ -558,7 +557,7 @@
     var c = document.createElement("div");
     c.className = "pushcard";
     c.innerHTML =
-      '<div class="pc-top"><span class="pc-ic">' + (card.icon || "🔔") + '</span>' +
+      '<div class="pc-top">' + (card.icon ? '<span class="pc-ic">' + card.icon + '</span>' : '') +
       '<span class="pc-head">' + (card.head || "") + '</span></div>' +
       '<div class="pc-body">' + (card.body || "") + '</div>' +
       (card.metric ? '<span class="pc-metric">' + card.metric + '</span>' : '') +
@@ -592,7 +591,7 @@
     if (state.playing) return;
     if (state.idx >= state.steps.length) resetSim();
     state.playing = true;
-    document.getElementById("playBtn").textContent = "⏸ 일시정지";
+    document.getElementById("playBtn").textContent = "일시정지";
     tick();
   }
   function tick() {
@@ -603,7 +602,7 @@
   function stopPlay() {
     state.playing = false;
     if (state.timer) { clearTimeout(state.timer); state.timer = null; }
-    document.getElementById("playBtn").textContent = "▶ 자동 재생";
+    document.getElementById("playBtn").textContent = "자동 재생";
   }
 
   function resetSim() {
@@ -611,7 +610,7 @@
     state.idx = 0;
     state.steps = buildSteps(state.persona);
     var feed = document.getElementById("busFeed");
-    feed.innerHTML = '<div class="bus-empty"><span class="be-ic">🛰️</span>재생을 누르면 오케스트레이터가 세 에이전트를 깨워<br>페르소나의 생애주기 업무를 처리합니다.</div>';
+    feed.innerHTML = '<div class="bus-empty">재생을 누르면 오케스트레이터가 세 에이전트를 깨워<br>페르소나의 생애주기 업무를 처리합니다.</div>';
     var screen = document.getElementById("phoneScreen");
     screen.querySelectorAll(".pushcard").forEach(function (e) { e.remove(); });
     var phantom = document.getElementById("phonePhantom");
@@ -651,7 +650,7 @@
     if (loadedParts.length < 3) {
       var warn = document.createElement("div");
       warn.className = "loading-warn";
-      warn.innerHTML = "⚠ 에이전트 모듈 " + loadedParts.length + "/3 로드됨. 미로드 파트: " +
+      warn.innerHTML = "주의: 에이전트 모듈 " + loadedParts.length + "/3 로드됨. 미로드 파트: " +
         ["docs", "asset", "fraud"].filter(function (p) { return !MODS[p]; }).join(", ") +
         ". 해당 sim_modules/mod_*.js 파일이 아직 준비되지 않았습니다.";
       document.querySelector(".stage").insertAdjacentElement("beforebegin", warn);
@@ -660,7 +659,8 @@
       "<b>시뮬레이션 설명</b> &nbsp; 이 화면은 My LifeRoad 오케스트레이터가 서류, 자산, 사기탐지 세 에이전트를 깨워 " +
       "두 페르소나의 입국부터 출국까지 전 과정을 능동적으로 처리하는 모습을 재생합니다. " +
       "에이전트는 사용자가 묻기 전에 마감과 위험을 먼저 감지(TRIGGER)하고, 서로 업무를 인계(HANDOFF)하며, 도구를 실행(TOOL)해 결과를 사용자에게 전달(RESULT)합니다. " +
-      "데이터 근거는 노션 제안서의 사례조사와 사기 사례정리와 서류 행정 사례정리에서 가져왔습니다.";
+      "데이터 근거는 노션 제안서의 사례조사와 사기 사례정리와 서류 행정 사례정리에서 가져왔습니다. " +
+      "<b>주의</b>: 이 화면은 콘셉트 시나리오 연출이다. 사기탐지 부문과 일부 서류 도구는 미구현이며 실구현 도구 목록과 다를 수 있다(실동작 데모는 web/ 채팅 화면).";
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
