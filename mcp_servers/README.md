@@ -6,7 +6,7 @@
 |---|---|---|---|
 | `asset/` | 자산 | 완료(표준 예시) | deadline_radar, pension_estimator, collateral_calc, remit_optimizer, credit_builder |
 | `docs/` | 서류행정 | 완료 | perception_parse(OCR), compliance_reason(가드레일), form_autofill(자동작성) |
-| (`fraud/`) | 사기탐지 | 미합류 | 폴더를 넣으면 자동 연결 예정 |
+| `fraud_guard/` | 사기탐지 | 완료(ML 엔진 탑재) | register_baseline, score_transaction, detect_account_takeover, request_verification |
 
 ## 새 부문 추가 규칙
 

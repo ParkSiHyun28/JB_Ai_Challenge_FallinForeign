@@ -13,11 +13,10 @@ const _isLocal =
 window.API_BASE = _isLocal ? LOCAL_API : PROD_API;
 
 /* 기업 관점(이상거래 관제 콘솔) URL.
-   현재 이 프로젝트에는 fraud_guard 콘솔이 아직 없다. 그래서 값을 비워 둔다.
-   비어 있으면 기업 관점 화면은 빈 iframe 대신 안내 템플릿만 보여준다.
-
-   사기탐지 부문 연동 완료(2026-07-05):
-   - mcp_servers/fraud_guard/ : 팀원 tool 라이브(폰 채팅이 호출).
-   - fraud_console/ : 기업 관점 관제 콘솔(정적, 8002로 서빙).
-   배포(Cloudflare Pages) 시엔 콘솔 호스팅 주소가 정해지면 아래 PROD 값을 채운다. */
+   사기탐지 부문은 연동 완료 상태다.
+   - mcp_servers/fraud_guard/ : 사기탐지 tool 라이브(폰 채팅이 호출).
+   - fraud_console/ : 기업 관점 관제 콘솔(정적, 로컬은 8002로 서빙).
+   로컬 시연에서는 아래 URL이 채워져 iframe이 실제 콘솔을 띄운다.
+   배포(Cloudflare Pages) 시엔 콘솔 호스팅 주소가 정해지면 아래 PROD 값을 채운다.
+   값이 비면(배포 초기 등) 기업 관점은 iframe 대신 안내 템플릿을 보여준다. */
 window.FRAUD_CONSOLE_URL = _isLocal ? "http://localhost:8002/" : "";

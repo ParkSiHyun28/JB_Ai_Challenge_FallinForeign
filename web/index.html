@@ -51,12 +51,12 @@
         <!-- 기업 관점: fraud-guard FDS 모니터링 콘솔 (fraud_guard/dashboard, 게이트웨이 8002) -->
         <div class="fraud-shell">
           <iframe id="fraud-frame" title="fraud-guard 모니터링 콘솔" loading="lazy"></iframe>
-          <!-- 이상탐지 콘솔(fraud_guard)이 아직 없어 iframe 대신 안내 템플릿을 보여준다.
-               config.js 의 FRAUD_CONSOLE_URL 이 채워지면 iframe 이 콘솔을 덮어 표시한다. -->
+          <!-- config.js 의 FRAUD_CONSOLE_URL 이 채워지면 iframe 이 콘솔을 덮어 표시한다.
+               로컬 시연에선 URL이 채워져 실제 콘솔이 뜨고, 값이 빌 때만 아래 안내 템플릿을 보여준다. -->
           <div class="fraud-placeholder" id="fraud-placeholder">
             <div class="fp-badge">기업 관점 - 이상거래 관제 콘솔</div>
-            <div class="fp-title">이상탐지 콘솔 연동 예정</div>
-            <div class="fp-desc">이 자리에 은행 내부 FDS 관제 화면이 들어옵니다.<br />fraud_guard 코드를 연결하면 이 템플릿이 실제 콘솔로 자동 전환됩니다.</div>
+            <div class="fp-title">이상탐지 콘솔 로딩 중</div>
+            <div class="fp-desc">이 자리에 은행 내부 FDS 관제 화면이 들어옵니다.<br />콘솔 주소가 설정되면 이 템플릿이 실제 콘솔로 자동 전환됩니다.</div>
             <div class="fp-hint"><b>F</b> 키를 누르면 이 화면에서 고객 관점으로 넘어가는 본인확인 크로스오버가 재생됩니다.</div>
           </div>
         </div>
