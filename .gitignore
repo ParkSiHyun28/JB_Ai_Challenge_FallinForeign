@@ -24,3 +24,8 @@ mcp_servers/docs/output/
 *.mov
 *.mp3
 *.srt
+
+# ── 시연 실행 스크립트 (팀 로컬용. 깃 제외) ──
+시연_서버_켜기.command
+시연_시작_맥.command
+시연_시작_윈도우.bat

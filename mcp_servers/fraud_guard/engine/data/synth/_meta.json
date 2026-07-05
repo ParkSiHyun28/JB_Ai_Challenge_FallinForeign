@@ -1,0 +1,32 @@
+{
+  "seed": 42,
+  "ref_date": "2026-06-05",
+  "config": "config/segments.yaml",
+  "window_days": 180,
+  "n_normal_per_seg": 1000,
+  "n_anomaly_per_seg": 50,
+  "n_eval_per_seg": 600,
+  "segments": [
+    "VN:E-9",
+    "NP:D-2"
+  ],
+  "features": [
+    "amount_log",
+    "balance_drawdown_ratio",
+    "hour",
+    "is_new_device",
+    "corridor_match",
+    "tx_velocity_24h",
+    "days_to_residency_end"
+  ],
+  "n_rows_total": 2100,
+  "mock_visa_customers": 119,
+  "calibration": {
+    "vn_e9_remit_loc": 14.5,
+    "np_d2_phishing_loc": 16.0,
+    "fraud_drawdown_beta": [
+      45.0,
+      2.0
+    ]
+  }
+}

@@ -1,0 +1,920 @@
+{
+  "metrics": {
+    "n_cases": 20,
+    "mode": "template",
+    "schema_pass": 20,
+    "schema_pass_rate": 1.0,
+    "fallback_rate": 1.0,
+    "cache_hit_rate": 0.0,
+    "question_ref_post_repair": 1.0,
+    "rule_coverage_rate": 1.0,
+    "script_match_rate": 0.0,
+    "llm_reports": 0,
+    "repair_rate": null,
+    "repair_reasons": {},
+    "avg_evidence_card_count": 12.4,
+    "generated_by": {
+      "template": 20
+    },
+    "errors": []
+  },
+  "sample": [
+    {
+      "tx_id": "FG-20260605-0001",
+      "customer_id": "VN-E-9-E0005",
+      "case_summary": "VN:E-9 고객의 7,520원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.01입니다. 발동 룰 0개와 모델 분위 0.954를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "risk_narrative": "VN:E-9 고객의 7,520원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.01입니다. 발동 룰 0개와 모델 분위 0.954를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "key_evidence": [
+        {
+          "id": "E_TX_1",
+          "kind": "transaction",
+          "title": "거래 금액",
+          "fact": "거래 금액은 7,520원입니다.",
+          "value": "7520.0",
+          "source": "transaction.amount"
+        },
+        {
+          "id": "E_TX_2",
+          "kind": "transaction",
+          "title": "거래 채널과 수취국",
+          "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+          "value": "KR",
+          "source": "transaction.channel,counterparty_country"
+        },
+        {
+          "id": "E_TX_3",
+          "kind": "transaction",
+          "title": "신규기기 여부",
+          "fact": "신규기기 여부는 False입니다.",
+          "value": "False",
+          "source": "transaction.is_new_device"
+        },
+        {
+          "id": "E_TX_4",
+          "kind": "transaction",
+          "title": "잔액 인출률",
+          "fact": "잔액 인출률은 0.01입니다.",
+          "value": "0.0123",
+          "source": "transaction.balance_drawdown_ratio"
+        },
+        {
+          "id": "E_TX_5",
+          "kind": "transaction",
+          "title": "24시간 거래 빈도",
+          "fact": "최근 24시간 거래 수는 4건입니다.",
+          "value": "4",
+          "source": "transaction.tx_velocity_24h"
+        },
+        {
+          "id": "E_MODEL_1",
+          "kind": "model",
+          "title": "모델 분위 점수",
+          "fact": "그룹 정상분포 대비 모델 분위 점수는 0.954입니다.",
+          "value": "0.954",
+          "source": "core.baseline.percentile"
+        },
+        {
+          "id": "E_MODEL_2",
+          "kind": "model",
+          "title": "축별 판정",
+          "fact": "룰 축=allow, 모델 축=review입니다.",
+          "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.954}",
+          "source": "core.decision.axes"
+        },
+        {
+          "id": "E_EXPLAIN_1",
+          "kind": "explain",
+          "title": "설명 피처 tx_velocity_24h",
+          "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.182입니다.",
+          "value": "0.182",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_2",
+          "kind": "explain",
+          "title": "설명 피처 balance_drawdown_ratio",
+          "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.167입니다.",
+          "value": "0.167",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_3",
+          "kind": "explain",
+          "title": "설명 피처 amount_log",
+          "fact": "설명 피처 'amount_log'의 기여 값은 0.161입니다.",
+          "value": "0.161",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_4",
+          "kind": "explain",
+          "title": "설명 피처 hour",
+          "fact": "설명 피처 'hour'의 기여 값은 0.153입니다.",
+          "value": "0.153",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_PROFILE_1",
+          "kind": "profile",
+          "title": "체류 만료 D-day",
+          "fact": "체류 만료까지 61일 남았습니다.",
+          "value": "61",
+          "source": "core.takeover.days_to_residency_end"
+        }
+      ],
+      "hypotheses": [
+        {
+          "name": "baseline_anomaly",
+          "status": "hypothesis",
+          "confidence": "medium",
+          "supporting_evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3",
+            "E_TX_4"
+          ],
+          "source": "code"
+        }
+      ],
+      "llm_suggested_hypotheses": [],
+      "verification_questions": [
+        {
+          "id": "Q1",
+          "question": "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+          "purpose": "본인 거래 여부 확인",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3"
+          ]
+        },
+        {
+          "id": "Q2",
+          "question": "수취인과 거래 목적을 고객에게 확인합니다.",
+          "purpose": "수취 관계와 목적 검증",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2"
+          ]
+        },
+        {
+          "id": "Q3",
+          "question": "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다.",
+          "purpose": "계정 탈취 또는 원격제어 가능성 확인",
+          "evidence_ids": [
+            "E_TX_3",
+            "E_TX_5"
+          ]
+        }
+      ],
+      "recommended_next_action": "manual_review",
+      "confidence": "medium",
+      "evidence": {
+        "tx_id": "FG-20260605-0001",
+        "customer_id": "VN-E-9-E0005",
+        "segment": "VN:E-9",
+        "language": "vi",
+        "transaction": {
+          "amount": 7520.0,
+          "channel": "domestic",
+          "counterparty_country": "KR",
+          "ip_country": "KR",
+          "is_new_device": false,
+          "tx_velocity_24h": 4,
+          "balance_drawdown_ratio": 0.0123
+        },
+        "decision": {
+          "action": "review",
+          "risk_score": 0.954,
+          "rule_score": 0.0,
+          "model_score": 0.954,
+          "triggered_rules": [],
+          "axes": {
+            "rule_action": "allow",
+            "model_action": "review",
+            "model_pctl": 0.954
+          }
+        },
+        "explanation": {
+          "features": {
+            "tx_velocity_24h": 0.182,
+            "balance_drawdown_ratio": 0.167,
+            "amount_log": 0.161,
+            "hour": 0.153
+          },
+          "explain_method": "local_diffi",
+          "takeover_boost": null,
+          "days_to_residency_end": 61
+        },
+        "history_summary": {},
+        "key_evidence": [
+          {
+            "id": "E_TX_1",
+            "kind": "transaction",
+            "title": "거래 금액",
+            "fact": "거래 금액은 7,520원입니다.",
+            "value": "7520.0",
+            "source": "transaction.amount"
+          },
+          {
+            "id": "E_TX_2",
+            "kind": "transaction",
+            "title": "거래 채널과 수취국",
+            "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+            "value": "KR",
+            "source": "transaction.channel,counterparty_country"
+          },
+          {
+            "id": "E_TX_3",
+            "kind": "transaction",
+            "title": "신규기기 여부",
+            "fact": "신규기기 여부는 False입니다.",
+            "value": "False",
+            "source": "transaction.is_new_device"
+          },
+          {
+            "id": "E_TX_4",
+            "kind": "transaction",
+            "title": "잔액 인출률",
+            "fact": "잔액 인출률은 0.01입니다.",
+            "value": "0.0123",
+            "source": "transaction.balance_drawdown_ratio"
+          },
+          {
+            "id": "E_TX_5",
+            "kind": "transaction",
+            "title": "24시간 거래 빈도",
+            "fact": "최근 24시간 거래 수는 4건입니다.",
+            "value": "4",
+            "source": "transaction.tx_velocity_24h"
+          },
+          {
+            "id": "E_MODEL_1",
+            "kind": "model",
+            "title": "모델 분위 점수",
+            "fact": "그룹 정상분포 대비 모델 분위 점수는 0.954입니다.",
+            "value": "0.954",
+            "source": "core.baseline.percentile"
+          },
+          {
+            "id": "E_MODEL_2",
+            "kind": "model",
+            "title": "축별 판정",
+            "fact": "룰 축=allow, 모델 축=review입니다.",
+            "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.954}",
+            "source": "core.decision.axes"
+          },
+          {
+            "id": "E_EXPLAIN_1",
+            "kind": "explain",
+            "title": "설명 피처 tx_velocity_24h",
+            "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.182입니다.",
+            "value": "0.182",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_2",
+            "kind": "explain",
+            "title": "설명 피처 balance_drawdown_ratio",
+            "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.167입니다.",
+            "value": "0.167",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_3",
+            "kind": "explain",
+            "title": "설명 피처 amount_log",
+            "fact": "설명 피처 'amount_log'의 기여 값은 0.161입니다.",
+            "value": "0.161",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_4",
+            "kind": "explain",
+            "title": "설명 피처 hour",
+            "fact": "설명 피처 'hour'의 기여 값은 0.153입니다.",
+            "value": "0.153",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_PROFILE_1",
+            "kind": "profile",
+            "title": "체류 만료 D-day",
+            "fact": "체류 만료까지 61일 남았습니다.",
+            "value": "61",
+            "source": "core.takeover.days_to_residency_end"
+          }
+        ]
+      },
+      "evidence_hash": "85f2a151070d5cfece87bc303428dca16cb60412bf82de38ec035c7872979974",
+      "generated_by": "template",
+      "llm_status": "template",
+      "repair_warnings": [],
+      "suspected_type": "baseline_anomaly",
+      "recommended_action": "manual_review",
+      "needed_checks": [
+        "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+        "수취인과 거래 목적을 고객에게 확인합니다.",
+        "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다."
+      ]
+    },
+    {
+      "tx_id": "FG-20260605-0002",
+      "customer_id": "NP-D-2-E0001",
+      "case_summary": "NP:D-2 고객의 8,871원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.55입니다. 발동 룰 0개와 모델 분위 0.956를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "risk_narrative": "NP:D-2 고객의 8,871원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.55입니다. 발동 룰 0개와 모델 분위 0.956를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "key_evidence": [
+        {
+          "id": "E_TX_1",
+          "kind": "transaction",
+          "title": "거래 금액",
+          "fact": "거래 금액은 8,871원입니다.",
+          "value": "8871.0",
+          "source": "transaction.amount"
+        },
+        {
+          "id": "E_TX_2",
+          "kind": "transaction",
+          "title": "거래 채널과 수취국",
+          "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+          "value": "KR",
+          "source": "transaction.channel,counterparty_country"
+        },
+        {
+          "id": "E_TX_3",
+          "kind": "transaction",
+          "title": "신규기기 여부",
+          "fact": "신규기기 여부는 False입니다.",
+          "value": "False",
+          "source": "transaction.is_new_device"
+        },
+        {
+          "id": "E_TX_4",
+          "kind": "transaction",
+          "title": "잔액 인출률",
+          "fact": "잔액 인출률은 0.55입니다.",
+          "value": "0.5459",
+          "source": "transaction.balance_drawdown_ratio"
+        },
+        {
+          "id": "E_TX_5",
+          "kind": "transaction",
+          "title": "24시간 거래 빈도",
+          "fact": "최근 24시간 거래 수는 4건입니다.",
+          "value": "4",
+          "source": "transaction.tx_velocity_24h"
+        },
+        {
+          "id": "E_MODEL_1",
+          "kind": "model",
+          "title": "모델 분위 점수",
+          "fact": "그룹 정상분포 대비 모델 분위 점수는 0.956입니다.",
+          "value": "0.956",
+          "source": "core.baseline.percentile"
+        },
+        {
+          "id": "E_MODEL_2",
+          "kind": "model",
+          "title": "축별 판정",
+          "fact": "룰 축=allow, 모델 축=review입니다.",
+          "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.956}",
+          "source": "core.decision.axes"
+        },
+        {
+          "id": "E_EXPLAIN_1",
+          "kind": "explain",
+          "title": "설명 피처 tx_velocity_24h",
+          "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.188입니다.",
+          "value": "0.188",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_2",
+          "kind": "explain",
+          "title": "설명 피처 balance_drawdown_ratio",
+          "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.174입니다.",
+          "value": "0.174",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_3",
+          "kind": "explain",
+          "title": "설명 피처 hour",
+          "fact": "설명 피처 'hour'의 기여 값은 0.172입니다.",
+          "value": "0.172",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_4",
+          "kind": "explain",
+          "title": "설명 피처 amount_log",
+          "fact": "설명 피처 'amount_log'의 기여 값은 0.165입니다.",
+          "value": "0.165",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_PROFILE_1",
+          "kind": "profile",
+          "title": "체류 만료 D-day",
+          "fact": "체류 만료까지 443일 남았습니다.",
+          "value": "443",
+          "source": "core.takeover.days_to_residency_end"
+        }
+      ],
+      "hypotheses": [
+        {
+          "name": "baseline_anomaly",
+          "status": "hypothesis",
+          "confidence": "medium",
+          "supporting_evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3",
+            "E_TX_4"
+          ],
+          "source": "code"
+        }
+      ],
+      "llm_suggested_hypotheses": [],
+      "verification_questions": [
+        {
+          "id": "Q1",
+          "question": "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+          "purpose": "본인 거래 여부 확인",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3"
+          ]
+        },
+        {
+          "id": "Q2",
+          "question": "수취인과 거래 목적을 고객에게 확인합니다.",
+          "purpose": "수취 관계와 목적 검증",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2"
+          ]
+        },
+        {
+          "id": "Q3",
+          "question": "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다.",
+          "purpose": "계정 탈취 또는 원격제어 가능성 확인",
+          "evidence_ids": [
+            "E_TX_3",
+            "E_TX_5"
+          ]
+        }
+      ],
+      "recommended_next_action": "manual_review",
+      "confidence": "medium",
+      "evidence": {
+        "tx_id": "FG-20260605-0002",
+        "customer_id": "NP-D-2-E0001",
+        "segment": "NP:D-2",
+        "language": "ne",
+        "transaction": {
+          "amount": 8871.0,
+          "channel": "domestic",
+          "counterparty_country": "KR",
+          "ip_country": "KR",
+          "is_new_device": false,
+          "tx_velocity_24h": 4,
+          "balance_drawdown_ratio": 0.5459
+        },
+        "decision": {
+          "action": "review",
+          "risk_score": 0.956,
+          "rule_score": 0.0,
+          "model_score": 0.956,
+          "triggered_rules": [],
+          "axes": {
+            "rule_action": "allow",
+            "model_action": "review",
+            "model_pctl": 0.956
+          }
+        },
+        "explanation": {
+          "features": {
+            "tx_velocity_24h": 0.188,
+            "balance_drawdown_ratio": 0.174,
+            "hour": 0.172,
+            "amount_log": 0.165
+          },
+          "explain_method": "local_diffi",
+          "takeover_boost": null,
+          "days_to_residency_end": 443
+        },
+        "history_summary": {},
+        "key_evidence": [
+          {
+            "id": "E_TX_1",
+            "kind": "transaction",
+            "title": "거래 금액",
+            "fact": "거래 금액은 8,871원입니다.",
+            "value": "8871.0",
+            "source": "transaction.amount"
+          },
+          {
+            "id": "E_TX_2",
+            "kind": "transaction",
+            "title": "거래 채널과 수취국",
+            "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+            "value": "KR",
+            "source": "transaction.channel,counterparty_country"
+          },
+          {
+            "id": "E_TX_3",
+            "kind": "transaction",
+            "title": "신규기기 여부",
+            "fact": "신규기기 여부는 False입니다.",
+            "value": "False",
+            "source": "transaction.is_new_device"
+          },
+          {
+            "id": "E_TX_4",
+            "kind": "transaction",
+            "title": "잔액 인출률",
+            "fact": "잔액 인출률은 0.55입니다.",
+            "value": "0.5459",
+            "source": "transaction.balance_drawdown_ratio"
+          },
+          {
+            "id": "E_TX_5",
+            "kind": "transaction",
+            "title": "24시간 거래 빈도",
+            "fact": "최근 24시간 거래 수는 4건입니다.",
+            "value": "4",
+            "source": "transaction.tx_velocity_24h"
+          },
+          {
+            "id": "E_MODEL_1",
+            "kind": "model",
+            "title": "모델 분위 점수",
+            "fact": "그룹 정상분포 대비 모델 분위 점수는 0.956입니다.",
+            "value": "0.956",
+            "source": "core.baseline.percentile"
+          },
+          {
+            "id": "E_MODEL_2",
+            "kind": "model",
+            "title": "축별 판정",
+            "fact": "룰 축=allow, 모델 축=review입니다.",
+            "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.956}",
+            "source": "core.decision.axes"
+          },
+          {
+            "id": "E_EXPLAIN_1",
+            "kind": "explain",
+            "title": "설명 피처 tx_velocity_24h",
+            "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.188입니다.",
+            "value": "0.188",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_2",
+            "kind": "explain",
+            "title": "설명 피처 balance_drawdown_ratio",
+            "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.174입니다.",
+            "value": "0.174",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_3",
+            "kind": "explain",
+            "title": "설명 피처 hour",
+            "fact": "설명 피처 'hour'의 기여 값은 0.172입니다.",
+            "value": "0.172",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_4",
+            "kind": "explain",
+            "title": "설명 피처 amount_log",
+            "fact": "설명 피처 'amount_log'의 기여 값은 0.165입니다.",
+            "value": "0.165",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_PROFILE_1",
+            "kind": "profile",
+            "title": "체류 만료 D-day",
+            "fact": "체류 만료까지 443일 남았습니다.",
+            "value": "443",
+            "source": "core.takeover.days_to_residency_end"
+          }
+        ]
+      },
+      "evidence_hash": "495a50e162ec8a3e2c17678f7edba1fc6907728007dcc87c854d3788236e49d4",
+      "generated_by": "template",
+      "llm_status": "template",
+      "repair_warnings": [],
+      "suspected_type": "baseline_anomaly",
+      "recommended_action": "manual_review",
+      "needed_checks": [
+        "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+        "수취인과 거래 목적을 고객에게 확인합니다.",
+        "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다."
+      ]
+    },
+    {
+      "tx_id": "FG-20260605-0003",
+      "customer_id": "NP-D-2-E0004",
+      "case_summary": "NP:D-2 고객의 6,816원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.72입니다. 발동 룰 0개와 모델 분위 0.961를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "risk_narrative": "NP:D-2 고객의 6,816원 domestic 거래입니다. 수취국은 KR, 신규기기=False, 잔액 인출률=0.72입니다. 발동 룰 0개와 모델 분위 0.961를 근거로 action=review 판정이 생성되었습니다. AI 조사관은 이 판정을 바꾸지 않고 후속 확인 질문만 생성합니다.",
+      "key_evidence": [
+        {
+          "id": "E_TX_1",
+          "kind": "transaction",
+          "title": "거래 금액",
+          "fact": "거래 금액은 6,816원입니다.",
+          "value": "6816.0",
+          "source": "transaction.amount"
+        },
+        {
+          "id": "E_TX_2",
+          "kind": "transaction",
+          "title": "거래 채널과 수취국",
+          "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+          "value": "KR",
+          "source": "transaction.channel,counterparty_country"
+        },
+        {
+          "id": "E_TX_3",
+          "kind": "transaction",
+          "title": "신규기기 여부",
+          "fact": "신규기기 여부는 False입니다.",
+          "value": "False",
+          "source": "transaction.is_new_device"
+        },
+        {
+          "id": "E_TX_4",
+          "kind": "transaction",
+          "title": "잔액 인출률",
+          "fact": "잔액 인출률은 0.72입니다.",
+          "value": "0.7228",
+          "source": "transaction.balance_drawdown_ratio"
+        },
+        {
+          "id": "E_TX_5",
+          "kind": "transaction",
+          "title": "24시간 거래 빈도",
+          "fact": "최근 24시간 거래 수는 1건입니다.",
+          "value": "1",
+          "source": "transaction.tx_velocity_24h"
+        },
+        {
+          "id": "E_MODEL_1",
+          "kind": "model",
+          "title": "모델 분위 점수",
+          "fact": "그룹 정상분포 대비 모델 분위 점수는 0.961입니다.",
+          "value": "0.961",
+          "source": "core.baseline.percentile"
+        },
+        {
+          "id": "E_MODEL_2",
+          "kind": "model",
+          "title": "축별 판정",
+          "fact": "룰 축=allow, 모델 축=review입니다.",
+          "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.961}",
+          "source": "core.decision.axes"
+        },
+        {
+          "id": "E_EXPLAIN_1",
+          "kind": "explain",
+          "title": "설명 피처 tx_velocity_24h",
+          "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.183입니다.",
+          "value": "0.183",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_2",
+          "kind": "explain",
+          "title": "설명 피처 balance_drawdown_ratio",
+          "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.176입니다.",
+          "value": "0.176",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_3",
+          "kind": "explain",
+          "title": "설명 피처 days_to_residency_end",
+          "fact": "설명 피처 'days_to_residency_end'의 기여 값은 0.165입니다.",
+          "value": "0.165",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_EXPLAIN_4",
+          "kind": "explain",
+          "title": "설명 피처 hour",
+          "fact": "설명 피처 'hour'의 기여 값은 0.164입니다.",
+          "value": "0.164",
+          "source": "core.explain:local_diffi"
+        },
+        {
+          "id": "E_PROFILE_1",
+          "kind": "profile",
+          "title": "체류 만료 D-day",
+          "fact": "체류 만료까지 200일 남았습니다.",
+          "value": "200",
+          "source": "core.takeover.days_to_residency_end"
+        }
+      ],
+      "hypotheses": [
+        {
+          "name": "baseline_anomaly",
+          "status": "hypothesis",
+          "confidence": "medium",
+          "supporting_evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3",
+            "E_TX_4"
+          ],
+          "source": "code"
+        }
+      ],
+      "llm_suggested_hypotheses": [],
+      "verification_questions": [
+        {
+          "id": "Q1",
+          "question": "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+          "purpose": "본인 거래 여부 확인",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2",
+            "E_TX_3"
+          ]
+        },
+        {
+          "id": "Q2",
+          "question": "수취인과 거래 목적을 고객에게 확인합니다.",
+          "purpose": "수취 관계와 목적 검증",
+          "evidence_ids": [
+            "E_TX_1",
+            "E_TX_2"
+          ]
+        },
+        {
+          "id": "Q3",
+          "question": "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다.",
+          "purpose": "계정 탈취 또는 원격제어 가능성 확인",
+          "evidence_ids": [
+            "E_TX_3",
+            "E_TX_5"
+          ]
+        }
+      ],
+      "recommended_next_action": "manual_review",
+      "confidence": "medium",
+      "evidence": {
+        "tx_id": "FG-20260605-0003",
+        "customer_id": "NP-D-2-E0004",
+        "segment": "NP:D-2",
+        "language": "ne",
+        "transaction": {
+          "amount": 6816.0,
+          "channel": "domestic",
+          "counterparty_country": "KR",
+          "ip_country": "KR",
+          "is_new_device": false,
+          "tx_velocity_24h": 1,
+          "balance_drawdown_ratio": 0.7228
+        },
+        "decision": {
+          "action": "review",
+          "risk_score": 0.961,
+          "rule_score": 0.0,
+          "model_score": 0.961,
+          "triggered_rules": [],
+          "axes": {
+            "rule_action": "allow",
+            "model_action": "review",
+            "model_pctl": 0.961
+          }
+        },
+        "explanation": {
+          "features": {
+            "tx_velocity_24h": 0.183,
+            "balance_drawdown_ratio": 0.176,
+            "days_to_residency_end": 0.165,
+            "hour": 0.164
+          },
+          "explain_method": "local_diffi",
+          "takeover_boost": null,
+          "days_to_residency_end": 200
+        },
+        "history_summary": {},
+        "key_evidence": [
+          {
+            "id": "E_TX_1",
+            "kind": "transaction",
+            "title": "거래 금액",
+            "fact": "거래 금액은 6,816원입니다.",
+            "value": "6816.0",
+            "source": "transaction.amount"
+          },
+          {
+            "id": "E_TX_2",
+            "kind": "transaction",
+            "title": "거래 채널과 수취국",
+            "fact": "domestic 채널로 KR 수취국 거래가 발생했습니다.",
+            "value": "KR",
+            "source": "transaction.channel,counterparty_country"
+          },
+          {
+            "id": "E_TX_3",
+            "kind": "transaction",
+            "title": "신규기기 여부",
+            "fact": "신규기기 여부는 False입니다.",
+            "value": "False",
+            "source": "transaction.is_new_device"
+          },
+          {
+            "id": "E_TX_4",
+            "kind": "transaction",
+            "title": "잔액 인출률",
+            "fact": "잔액 인출률은 0.72입니다.",
+            "value": "0.7228",
+            "source": "transaction.balance_drawdown_ratio"
+          },
+          {
+            "id": "E_TX_5",
+            "kind": "transaction",
+            "title": "24시간 거래 빈도",
+            "fact": "최근 24시간 거래 수는 1건입니다.",
+            "value": "1",
+            "source": "transaction.tx_velocity_24h"
+          },
+          {
+            "id": "E_MODEL_1",
+            "kind": "model",
+            "title": "모델 분위 점수",
+            "fact": "그룹 정상분포 대비 모델 분위 점수는 0.961입니다.",
+            "value": "0.961",
+            "source": "core.baseline.percentile"
+          },
+          {
+            "id": "E_MODEL_2",
+            "kind": "model",
+            "title": "축별 판정",
+            "fact": "룰 축=allow, 모델 축=review입니다.",
+            "value": "{\"rule_action\": \"allow\", \"model_action\": \"review\", \"model_pctl\": 0.961}",
+            "source": "core.decision.axes"
+          },
+          {
+            "id": "E_EXPLAIN_1",
+            "kind": "explain",
+            "title": "설명 피처 tx_velocity_24h",
+            "fact": "설명 피처 'tx_velocity_24h'의 기여 값은 0.183입니다.",
+            "value": "0.183",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_2",
+            "kind": "explain",
+            "title": "설명 피처 balance_drawdown_ratio",
+            "fact": "설명 피처 'balance_drawdown_ratio'의 기여 값은 0.176입니다.",
+            "value": "0.176",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_3",
+            "kind": "explain",
+            "title": "설명 피처 days_to_residency_end",
+            "fact": "설명 피처 'days_to_residency_end'의 기여 값은 0.165입니다.",
+            "value": "0.165",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_EXPLAIN_4",
+            "kind": "explain",
+            "title": "설명 피처 hour",
+            "fact": "설명 피처 'hour'의 기여 값은 0.164입니다.",
+            "value": "0.164",
+            "source": "core.explain:local_diffi"
+          },
+          {
+            "id": "E_PROFILE_1",
+            "kind": "profile",
+            "title": "체류 만료 D-day",
+            "fact": "체류 만료까지 200일 남았습니다.",
+            "value": "200",
+            "source": "core.takeover.days_to_residency_end"
+          }
+        ]
+      },
+      "evidence_hash": "150cce52c0dbf35e9671504d702cbec875bd9bcb76ed69402a67afd57c7ec40d",
+      "generated_by": "template",
+      "llm_status": "template",
+      "repair_warnings": [],
+      "suspected_type": "baseline_anomaly",
+      "recommended_action": "manual_review",
+      "needed_checks": [
+        "고객이 해당 거래를 직접 지시했는지 모국어로 확인합니다.",
+        "수취인과 거래 목적을 고객에게 확인합니다.",
+        "최근 기기 변경과 접속 국가가 본인 행동인지 확인합니다."
+      ]
+    }
+  ]
+}

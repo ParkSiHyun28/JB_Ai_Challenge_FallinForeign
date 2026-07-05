@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>고객 스마트폰 본인확인</title>
+<style>
+  :root {
+    --blue: #0056c6;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.1);
+    --soft: #eef6ff;
+    --safe: #059669;
+    --warn: #d97706;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 18% 12%, rgba(0, 86, 198, 0.22), transparent 28%),
+      radial-gradient(circle at 82% 22%, rgba(20, 184, 166, 0.18), transparent 30%),
+      linear-gradient(135deg, #eaf4ff, #f8fafc 52%, #edf7f5);
+  }
+  .stage {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(330px, 440px) minmax(260px, 360px);
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 18px;
+  }
+  .stage.customer-only {
+    grid-template-columns: minmax(330px, 440px);
+  }
+  .phone {
+    width: min(440px, calc(100vw - 24px));
+    min-height: 812px;
+    max-height: calc(100vh - 56px);
+    border: 11px solid #111827;
+    border-radius: 44px;
+    background: #f8fafc;
+    box-shadow: 0 30px 80px rgba(2, 6, 23, 0.28);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .statusbar {
+    height: 46px;
+    padding: 16px 34px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 14px;
+    font-weight: 900;
+    background: #ffffff;
+    letter-spacing: 0;
+  }
+  .notch {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 116px;
+    height: 30px;
+    background: #111827;
+    border-radius: 0 0 18px 18px;
+    top: 0;
+  }
+  .app-head {
+    position: relative;
+    padding: 18px 28px 18px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+  .bank-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--blue), #0ea5e9);
+    font-weight: 950;
+    font-size: 18px;
+  }
+  .brand b {
+    display: block;
+    font-size: 18px;
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+  .brand small {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 245px;
+  }
+  .live {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(5, 150, 105, 0.18);
+    background: rgba(5, 150, 105, 0.08);
+    color: #047857;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 900;
+  }
+  .live::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+  }
+  main {
+    flex: 1;
+    overflow: auto;
+    padding: 20px 18px 18px;
+    background: linear-gradient(#f8fbff, #eef6ff);
+    scrollbar-color: rgba(15, 23, 42, 0.24) transparent;
+    scrollbar-width: thin;
+  }
+  .notice {
+    border: 1px solid rgba(0, 86, 198, 0.14);
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  }
+  .notice h1 {
+    margin: 0 0 14px;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .notice p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.56;
+  }
+  .tx-card {
+    margin-top: 16px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    padding: 18px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  }
+  .tx-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    font-size: 15px;
+  }
+  .tx-row:last-child { border-bottom: 0; }
+  .tx-row span { color: var(--muted); }
+  .tx-row b {
+    text-align: right;
+    font-weight: 900;
+    color: var(--ink);
+  }
+  .reason-card {
+    margin-top: 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(217, 119, 6, 0.18);
+    background: #fffbeb;
+    padding: 13px 14px;
+  }
+  .reason-card h2, .question-card h2 {
+    margin: 0 0 8px;
+    font-size: 13.5px;
+    letter-spacing: 0;
+  }
+  .reason-list, .question-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #475569;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .question-card {
+    margin-top: 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 86, 198, 0.12);
+    background: #ffffff;
+    padding: 13px 14px;
+  }
+  .chat {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .bubble {
+    max-width: 86%;
+    padding: 12px 13px;
+    border-radius: 18px;
+    font-size: 13.5px;
+    line-height: 1.52;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  }
+  .bubble.bank {
+    justify-self: start;
+    background: #ffffff;
+    border: 1px solid rgba(0, 86, 198, 0.12);
+    border-top-left-radius: 6px;
+  }
+  .bubble.customer {
+    justify-self: end;
+    background: var(--blue);
+    color: #ffffff;
+    border-top-right-radius: 6px;
+  }
+  .result {
+    margin-top: 12px;
+    border: 1px solid rgba(5, 150, 105, 0.18);
+    background: rgba(236, 253, 245, 0.86);
+    border-radius: 16px;
+    padding: 12px;
+    color: #065f46;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .debug {
+    margin-top: 8px;
+    color: #334155;
+    font-size: 11px;
+  }
+  .customer-only .side {
+    display: none;
+  }
+  .composer {
+    border-top: 1px solid var(--line);
+    background: #ffffff;
+    padding: 16px 18px 18px;
+  }
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin-bottom: 12px;
+  }
+  .chips button {
+    border: 1px solid rgba(0, 86, 198, 0.18);
+    background: #f8fafc;
+    color: #1e3a8a;
+    border-radius: 14px;
+    padding: 12px 9px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .chips button:hover { background: var(--soft); }
+  textarea {
+    width: 100%;
+    min-height: 94px;
+    resize: vertical;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 18px;
+    padding: 14px;
+    font: inherit;
+    font-size: 15px;
+    line-height: 1.48;
+    background: #ffffff;
+    color: var(--ink);
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0, 86, 198, 0.12);
+  }
+  .send {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    margin-top: 12px;
+    padding: 15px;
+    color: #ffffff;
+    background: var(--blue);
+    font-weight: 950;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .send:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+  .side {
+    align-self: stretch;
+    max-height: calc(100vh - 56px);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+  }
+  .panel {
+    border: 1px solid rgba(0, 86, 198, 0.12);
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(14px);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.12);
+  }
+  .panel h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    letter-spacing: 0;
+  }
+  .panel p, .panel li {
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.58;
+  }
+  .panel ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+  }
+  .state-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 7px 10px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 86, 198, 0.14);
+    color: #1e3a8a;
+    font-size: 12px;
+    font-weight: 800;
+    margin-right: 6px;
+    margin-top: 6px;
+  }
+  .empty {
+    display: grid;
+    place-items: center;
+    min-height: 420px;
+    color: var(--muted);
+    text-align: center;
+    padding: 24px;
+  }
+  @media (max-width: 860px) {
+    .stage {
+      grid-template-columns: 1fr;
+      padding: 16px;
+    }
+    .phone {
+      min-height: min(780px, calc(100vh - 32px));
+      justify-self: center;
+    }
+    .side {
+      max-height: none;
+      justify-content: start;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <section class="phone" aria-label="고객 스마트폰 본인확인 화면">
+      <div class="statusbar">
+        <div class="notch"></div>
+        <span id="clock">9:41</span>
+        <span>LTE 100%</span>
+      </div>
+      <header class="app-head">
+        <div class="bank-row">
+          <div class="brand">
+            <div class="mark">JB</div>
+            <div>
+              <b id="brand-title">JB 보안확인</b>
+              <small id="case-label">케이스 연결 중</small>
+            </div>
+          </div>
+          <span class="live" id="live-label">연결됨</span>
+        </div>
+      </header>
+      <main id="screen">
+        <div class="empty">고객 확인 화면을 불러오는 중입니다.</div>
+      </main>
+      <footer class="composer" id="composer" hidden></footer>
+    </section>
+
+    <aside class="side">
+      <div class="panel">
+        <h2>운영자용 데모 패널</h2>
+        <p>이 영역은 개발·시연용 운영 기록입니다. 기본 고객 화면에서는 숨겨지고, <b>?debug=1</b>일 때만 표시됩니다.</p>
+        <div id="state-pills"></div>
+        <div id="trace-panel"></div>
+      </div>
+      <div class="panel">
+        <h2>데모 원칙</h2>
+        <ul>
+          <li>고객에게 국적별 사기 빈도나 민족 집단을 언급하지 않음</li>
+          <li>보안 확인 사유는 관측된 거래 신호로만 설명</li>
+          <li>답변 해석은 처리 후보이며 최종 승인/차단은 분석가가 결정</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+const alertId = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+const DEBUG_VIEW = new URLSearchParams(location.search).get('debug') === '1';
+let currentAlert = null;
+let isSending = false;
+let pendingTimer = null;
+
+const STATUS_KO = {
+  open: "대기",
+  verifying: "본인확인중",
+  escalated: "분석가 확인중",
+  approved: "정상승인",
+  blocked: "차단확정",
+  holding: "보류유지",
+  reported: "STR보고"
+};
+const INTENT_KO = {
+  confirmed_by_customer: "본인거래 확인",
+  denies_transaction: "거래 부인",
+  coercion_hint: "강요/비밀유지 암시",
+  remote_control_hint: "원격제어 암시",
+  scam_script_hint: "사기 스크립트 암시",
+  inconsistent_confirmation: "모순 답변",
+  unclear_needs_followup: "추가확인 필요",
+  unsafe_or_irrelevant_reply: "무관/위험 답변"
+};
+const NEXT_KO = {
+  release_candidate: "해제 후보",
+  account_takeover_escalation: "계정탈취 조사",
+  protective_escalation: "보호 라우팅",
+  keep_hold_and_ask_followup: "보류 유지 + 추가질문",
+  manual_review: "수동 재검토"
+};
+const INTENT_SENTENCE_KO = {
+  confirmed_by_customer: "고객이 본인이 진행한 거래라고 답했습니다.",
+  denies_transaction: "고객이 본인이 진행하지 않은 거래라고 답했습니다.",
+  coercion_hint: "고객 답변에 타인의 지시나 비밀유지 요구가 포함되어 있습니다.",
+  remote_control_hint: "고객 답변에 앱 설치, 화면 공유, 원격제어 정황이 포함되어 있습니다.",
+  scam_script_hint: "고객 답변에 대출수수료, 투자권유 등 사기 스크립트와 유사한 표현이 포함되어 있습니다.",
+  inconsistent_confirmation: "고객 답변이 본인 확인 질문과 모순되어 추가 확인이 필요합니다.",
+  unclear_needs_followup: "고객 답변만으로 본인거래 여부를 확정하기 어렵습니다.",
+  unsafe_or_irrelevant_reply: "고객 답변이 무관하거나 안전하지 않아 수동 확인이 필요합니다."
+};
+const NEXT_SENTENCE_KO = {
+  release_candidate: "분석가가 원문과 거래 내용을 확인한 뒤 해제 여부를 결정해야 합니다.",
+  account_takeover_escalation: "계정 탈취 가능성을 우선 확인하고 보류를 유지하는 후보입니다.",
+  protective_escalation: "고객 보호 관점에서 보류를 유지하고 후선 분석가에게 상신하는 후보입니다.",
+  keep_hold_and_ask_followup: "보류를 유지한 채 추가 질문으로 사실관계를 확인하는 후보입니다.",
+  manual_review: "자동 분류만으로 판단하지 않고 담당자가 직접 확인하는 후보입니다."
+};
+const LANG_KO = { vi: "베트남어", ne: "네팔어", ko: "한국어", en: "영어" };
+const COPY = {
+  ko: {
+    h1: "송금 전 보안 확인이 필요합니다",
+    intro: "고객님의 송금 요청이 일시 보류되었습니다. 본인이 직접 진행한 거래인지 확인해 주세요. 답변은 은행 보안 담당자에게 전달됩니다.",
+    reasonTitle: "보안 확인 사유",
+    questionTitle: "확인 질문",
+    result: "답변이 은행 보안 담당자에게 전달되었습니다. 추가 확인이 필요하면 같은 화면으로 다시 안내됩니다.",
+    reload: "발송 상태 다시 확인",
+    placeholder: "답변을 입력해 주세요. 예: 본인거래 / 모르는 거래 / 누가 시켰어요 / 화면공유를 했어요",
+    send: "답변 보내기",
+    brandTitle: "JB 보안확인",
+    connected: "연결됨",
+    tx: { amount: "금액", route: "송금 경로", ip: "접속국", device: "기기", time: "접수 시간", newDevice: "새 기기", knownDevice: "기존 등록 기기" },
+    status: { open: "대기", verifying: "본인확인중", escalated: "분석가 확인중", approved: "정상승인", blocked: "차단확정", holding: "보류유지", reported: "STR보고" },
+    channel: { remittance: "해외 송금", domestic: "국내 이체", atm: "ATM 인출" },
+    reasons: {
+      corridor_mismatch: "평소 송금 경로와 다른 수취국 거래가 감지되었습니다.",
+      deep_night: "평소보다 늦은 시간대에 거래가 요청되었습니다.",
+      new_device: "기존에 등록되지 않은 기기에서 요청되었습니다.",
+      high_velocity: "짧은 시간 안에 여러 번 거래가 발생했습니다.",
+      exit_drawdown: "계좌 잔액 중 큰 비율이 한 번에 빠져나가고 있습니다.",
+      visa_expiry: "체류 만료일이 가까운 시점의 고액 송금입니다.",
+      overstay: "체류기간 만료 이후 거래로 확인이 필요합니다.",
+      model: "거래 패턴이 평소 정상 분포와 달라 추가 확인이 필요합니다.",
+      velocity: "최근 24시간 안에 여러 번 거래가 발생했습니다.",
+      ipRoute: "접속 위치와 송금 수취국이 달라 추가 확인이 필요합니다."
+    },
+    questions: [
+      "이 송금을 고객님이 직접 요청하셨나요?",
+      "누군가 송금을 지시하거나 은행에 말하지 말라고 했나요?",
+      "앱 설치, 화면 공유, 원격제어 요청을 받은 적이 있나요?",
+      "수취인과 송금 목적을 알고 계신가요?"
+    ],
+    sampleLabels: { confirmed: "본인거래", denied: "거래부인", coercion: "강요암시", remote: "원격제어" }
+  },
+  vi: {
+    h1: "Cần xác minh bảo mật trước khi chuyển tiền",
+    intro: "Yêu cầu chuyển tiền của bạn đang được tạm giữ. Vui lòng xác nhận giao dịch này có do bạn trực tiếp thực hiện hay không. Câu trả lời sẽ được gửi cho bộ phận an toàn của ngân hàng.",
+    reasonTitle: "Lý do cần xác minh",
+    questionTitle: "Câu hỏi xác minh",
+    result: "Câu trả lời đã được gửi cho bộ phận an toàn của ngân hàng. Nếu cần xác minh thêm, chúng tôi sẽ hướng dẫn trên màn hình này.",
+    reload: "Kiểm tra lại trạng thái",
+    placeholder: "Nhập câu trả lời. Ví dụ: Tôi đã gửi / Tôi không biết giao dịch này / Có người bảo tôi chuyển / Tôi đã chia sẻ màn hình",
+    send: "Gửi câu trả lời",
+    brandTitle: "JB Xác minh bảo mật",
+    connected: "Đã kết nối",
+    tx: { amount: "Số tiền", route: "Kênh chuyển", ip: "Quốc gia truy cập", device: "Thiết bị", time: "Thời gian", newDevice: "Thiết bị mới", knownDevice: "Thiết bị đã đăng ký" },
+    status: { open: "Đang chờ", verifying: "Đang xác minh", escalated: "Đang được chuyên viên kiểm tra", approved: "Đã chấp thuận", blocked: "Đã chặn", holding: "Tiếp tục tạm giữ", reported: "Đã báo cáo" },
+    channel: { remittance: "Chuyển tiền quốc tế", domestic: "Chuyển khoản nội địa", atm: "Rút tiền ATM" },
+    reasons: {
+      corridor_mismatch: "Giao dịch đến quốc gia nhận khác với tuyến chuyển tiền thông thường.",
+      deep_night: "Giao dịch được yêu cầu vào thời điểm muộn hơn bình thường.",
+      new_device: "Yêu cầu được thực hiện từ thiết bị chưa đăng ký.",
+      high_velocity: "Có nhiều giao dịch trong thời gian ngắn.",
+      exit_drawdown: "Một phần lớn số dư tài khoản đang được chuyển đi.",
+      visa_expiry: "Đây là giao dịch giá trị cao gần thời điểm hết hạn lưu trú.",
+      overstay: "Cần xác minh thêm vì giao dịch xảy ra sau thời hạn lưu trú.",
+      model: "Mẫu giao dịch khác với phân bố giao dịch thông thường nên cần xác minh.",
+      velocity: "Có nhiều giao dịch trong 24 giờ gần đây.",
+      ipRoute: "Vị trí truy cập và quốc gia nhận tiền khác nhau nên cần xác minh thêm."
+    },
+    questions: [
+      "Bạn có trực tiếp yêu cầu giao dịch này không?",
+      "Có ai yêu cầu bạn chuyển tiền hoặc bảo bạn không nói với ngân hàng không?",
+      "Có ai yêu cầu bạn cài ứng dụng, chia sẻ màn hình hoặc cho điều khiển từ xa không?",
+      "Bạn có biết người nhận và mục đích chuyển tiền không?"
+    ],
+    sampleLabels: { confirmed: "Tôi đã gửi", denied: "Không phải tôi", coercion: "Bị yêu cầu", remote: "Chia sẻ màn hình" }
+  },
+  ne: {
+    h1: "पैसा पठाउनु अघि सुरक्षा पुष्टि आवश्यक छ",
+    intro: "तपाईंको रकम पठाउने अनुरोध अस्थायी रूपमा रोकिएको छ। यो कारोबार तपाईं आफैले गर्नुभएको हो कि होइन पुष्टि गर्नुहोस्। तपाईंको जवाफ बैंकको सुरक्षा टोलीमा पठाइनेछ।",
+    reasonTitle: "सुरक्षा पुष्टि गर्ने कारण",
+    questionTitle: "पुष्टि गर्ने प्रश्नहरू",
+    result: "तपाईंको जवाफ बैंकको सुरक्षा टोलीमा पठाइएको छ। थप पुष्टि आवश्यक भए यही स्क्रिनमा जानकारी दिइनेछ।",
+    reload: "स्थिति फेरि जाँच गर्नुहोस्",
+    placeholder: "जवाफ लेख्नुहोस्। जस्तै: मैले पठाएको हो / मलाई यो कारोबार थाहा छैन / कसैले पठाउन भन्यो / मैले स्क्रिन सेयर गरेँ",
+    send: "जवाफ पठाउनुहोस्",
+    brandTitle: "JB सुरक्षा पुष्टि",
+    connected: "जडान भयो",
+    tx: { amount: "रकम", route: "पठाउने माध्यम", ip: "पहुँच देश", device: "डिभाइस", time: "समय", newDevice: "नयाँ डिभाइस", knownDevice: "दर्ता भएको डिभाइस" },
+    status: { open: "पर्खाइमा", verifying: "पुष्टि हुँदै", escalated: "विशेषज्ञले जाँच गर्दै", approved: "स्वीकृत", blocked: "रोकियो", holding: "रोकिराखिएको", reported: "रिपोर्ट गरियो" },
+    channel: { remittance: "अन्तर्राष्ट्रिय रेमिट्यान्स", domestic: "देशभित्र ट्रान्सफर", atm: "ATM निकासी" },
+    reasons: {
+      corridor_mismatch: "सामान्य पठाउने मार्गभन्दा फरक प्राप्ति देशमा कारोबार देखिएको छ।",
+      deep_night: "सामान्यभन्दा ढिलो समयमा कारोबार अनुरोध भएको छ।",
+      new_device: "दर्ता नभएको नयाँ डिभाइसबाट अनुरोध आएको छ।",
+      high_velocity: "छोटो समयमा धेरै कारोबार भएका छन्।",
+      exit_drawdown: "खाताको ठूलो भाग एकैपटक पठाउन खोजिएको छ।",
+      visa_expiry: "बसाइ अवधि सकिन नजिक हुँदा ठूलो रकमको कारोबार छ।",
+      overstay: "बसाइ अवधि सकिएपछि कारोबार भएकाले थप पुष्टि आवश्यक छ।",
+      model: "कारोबारको ढाँचा सामान्य कारोबारभन्दा फरक भएकाले थप पुष्टि आवश्यक छ।",
+      velocity: "पछिल्लो २४ घण्टामा धेरै कारोबार भएका छन्।",
+      ipRoute: "पहुँच स्थान र रकम जाने देश फरक भएकाले थप पुष्टि आवश्यक छ।"
+    },
+    questions: [
+      "यो रकम पठाउने अनुरोध तपाईं आफैले गर्नुभएको हो?",
+      "कसैले रकम पठाउन वा बैंकलाई नभन्न भनेको छ?",
+      "कसैले एप इन्स्टल गर्न, स्क्रिन सेयर गर्न वा रिमोट कन्ट्रोल दिन भनेको छ?",
+      "तपाईं प्राप्तकर्ता र रकम पठाउने उद्देश्य चिन्नुहुन्छ?"
+    ],
+    sampleLabels: { confirmed: "मैले पठाएँ", denied: "मैले होइन", coercion: "कसैले भन्यो", remote: "स्क्रिन सेयर" }
+  },
+  en: {
+    h1: "Security check required before transfer",
+    intro: "Your transfer request has been temporarily held. Please confirm whether you personally made this request. Your reply will be sent to the bank security team.",
+    reasonTitle: "Why we are checking",
+    questionTitle: "Questions",
+    result: "Your reply has been sent to the bank security team. If more checks are needed, we will guide you here.",
+    reload: "Check status again",
+    placeholder: "Enter your reply. For example: I sent it / I do not know this transfer / Someone told me / I shared my screen",
+    send: "Send reply",
+    brandTitle: "JB Security Check",
+    connected: "Connected",
+    tx: { amount: "Amount", route: "Transfer route", ip: "Access country", device: "Device", time: "Request time", newDevice: "New device", knownDevice: "Registered device" },
+    status: { open: "Pending", verifying: "Verifying", escalated: "Under specialist review", approved: "Approved", blocked: "Blocked", holding: "Held", reported: "Reported" },
+    channel: { remittance: "International transfer", domestic: "Domestic transfer", atm: "ATM withdrawal" },
+    reasons: {
+      corridor_mismatch: "The destination country differs from the usual transfer route.",
+      deep_night: "The transfer was requested later than usual.",
+      new_device: "The request came from an unregistered device.",
+      high_velocity: "Several transfers occurred within a short period.",
+      exit_drawdown: "A large share of the account balance is being transferred.",
+      visa_expiry: "This is a high-value transfer near a residency expiry date.",
+      overstay: "The transfer needs review because it occurred after residency expiry.",
+      model: "The transfer pattern differs from the usual normal distribution.",
+      velocity: "Several transfers occurred in the last 24 hours.",
+      ipRoute: "The access location and destination country differ, so we need to check."
+    },
+    questions: [
+      "Did you personally request this transfer?",
+      "Did someone tell you to send money or not tell the bank?",
+      "Did anyone ask you to install an app, share your screen, or allow remote control?",
+      "Do you know the recipient and the purpose of this transfer?"
+    ],
+    sampleLabels: { confirmed: "I sent it", denied: "Not me", coercion: "Someone told me", remote: "Screen sharing" }
+  }
+};
+
+function copyFor(lang) {
+  return COPY[lang] || COPY.en;
+}
+
+function localizedStatus(a) {
+  const c = copyFor(a.language);
+  return (c.status && c.status[a.status]) || STATUS_KO[a.status] || a.status;
+}
+
+function localizedChannel(channel, lang) {
+  const c = copyFor(lang);
+  return (c.channel && c.channel[channel]) || channel || "-";
+}
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function won(v) {
+  return Number(v || 0).toLocaleString('ko-KR') + '원';
+}
+function hhmm(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+async function jget(path) {
+  const r = await fetch(path);
+  const body = await r.json();
+  if (!r.ok || body.error) throw new Error(body.error || r.statusText);
+  return body;
+}
+async function jpost(path, body) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const out = await r.json();
+  if (!r.ok || out.error) throw new Error(out.error || r.statusText);
+  return out;
+}
+
+function replySamples(lang) {
+  const labels = copyFor(lang).sampleLabels;
+  if (lang === 'vi') {
+    return [
+      { label: labels.confirmed, text: 'Đúng, tôi đã gửi tiền sinh hoạt cho gia đình.' },
+      { label: labels.denied, text: 'Tôi không thực hiện giao dịch này và không biết người nhận.' },
+      { label: labels.coercion, text: 'Có người bảo tôi chuyển tiền và không được báo ngân hàng.' },
+      { label: labels.remote, text: 'Nhân viên bảo tôi cài ứng dụng và chia sẻ màn hình.' }
+    ];
+  }
+  if (lang === 'ne') {
+    return [
+      { label: labels.confirmed, text: 'हो, मैले परिवारलाई खर्च पठाएको हो।' },
+      { label: labels.denied, text: 'मैले यो कारोबार गरेको छैन र प्राप्तकर्ता चिन्दिनँ।' },
+      { label: labels.coercion, text: 'कसैले पैसा पठाउन भनेको थियो र बैंकलाई नभन्न भनेको थियो।' },
+      { label: labels.remote, text: 'कसैले एप इन्स्टल गर्न र स्क्रिन सेयर गर्न भन्यो।' }
+    ];
+  }
+  return [
+    { label: labels.confirmed, text: '네, 제가 가족에게 생활비로 보낸 거래가 맞습니다.' },
+    { label: labels.denied, text: '저는 이 거래를 한 적이 없고 수취인이 누구인지 모릅니다.' },
+    { label: labels.coercion, text: '누가 하라고 했고 은행에는 말하지 말라고 했어요.' },
+    { label: labels.remote, text: '상담원이 앱을 설치하라고 해서 화면을 공유했습니다.' }
+  ];
+}
+
+function fallbackMessage(a) {
+  const lang = LANG_KO[a.language] || a.language || '모국어';
+  return `${lang} 보안 확인 메시지를 준비하고 있습니다. 잠시 후 다시 확인해 주세요.`;
+}
+
+function renderPills(a) {
+  if (!DEBUG_VIEW) return;
+  const latest = a.verification_result || (a.verification_turns || []).slice(-1)[0];
+  const pills = [
+    `상태: ${STATUS_KO[a.status] || a.status}`,
+    `언어: ${LANG_KO[a.language] || a.language}`,
+    `케이스: ${a.id}`
+  ];
+  if (latest) {
+    pills.push(`답변 해석: ${INTENT_KO[latest.detected_intent] || latest.detected_intent}`);
+    pills.push(`운영 후보: ${NEXT_KO[latest.next_state] || latest.next_state}`);
+  }
+  $('state-pills').innerHTML = pills.map(x => `<span class="state-pill">${esc(x)}</span>`).join('');
+  renderTrace(a, latest);
+}
+
+function renderTrace(a, latest) {
+  if (!DEBUG_VIEW) return;
+  const trace = $('trace-panel');
+  if (!trace) return;
+  const checklist = latest && latest.operator_checklist ? latest.operator_checklist : [];
+  trace.innerHTML = latest ? `
+    <div class="debug" style="margin-top:12px;">
+      <b>운영자 기록</b><br>
+      ${esc(INTENT_SENTENCE_KO[latest.detected_intent] || INTENT_KO[latest.detected_intent] || latest.detected_intent)}<br>
+      ${esc(NEXT_SENTENCE_KO[latest.next_state] || NEXT_KO[latest.next_state] || latest.next_state)}<br>
+      ${checklist.length ? `<ul>${checklist.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    </div>
+  ` : `
+    <div class="debug" style="margin-top:12px;">
+      <b>운영자 기록</b><br>
+      아직 고객 답변이 없습니다.
+    </div>
+  `;
+}
+
+function securityReasons(a) {
+  const c = copyFor(a.language);
+  const reasonKeys = new Set();
+  for (const rule of (a.triggered_rules || [])) {
+    if (c.reasons[rule]) reasonKeys.add(rule);
+  }
+  if (a.is_new_device) {
+    reasonKeys.add("new_device");
+  }
+  if (Number(a.tx_velocity_24h || 0) >= 4) {
+    reasonKeys.add("velocity");
+  }
+  if (Number(a.balance_drawdown_ratio || 0) >= 0.6) {
+    reasonKeys.add("exit_drawdown");
+  }
+  if (a.counterparty_country && a.ip_country && a.counterparty_country !== a.ip_country) {
+    reasonKeys.add("ipRoute");
+  }
+  return [...reasonKeys].map(k => c.reasons[k]).filter(Boolean).slice(0, 4);
+}
+
+function renderConversation(a) {
+  const turns = a.verification_turns || [];
+  if (!turns.length) return '';
+  return `
+    <div class="chat">
+      ${turns.map(t => `
+        <div class="bubble customer">${esc(t.customer_reply)}</div>
+        <div class="bubble bank">${esc(t.customer_next_message)}</div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderScreen(a) {
+  const latest = a.verification_result || (a.verification_turns || []).slice(-1)[0];
+  const c = copyFor(a.language);
+  $('brand-title').textContent = c.brandTitle;
+  $('live-label').textContent = c.connected;
+  $('case-label').textContent = `${a.id} · ${localizedStatus(a)}`;
+  $('clock').textContent = hhmm();
+  renderPills(a);
+  schedulePendingRefresh(a);
+
+  $('screen').innerHTML = `
+    <section class="notice">
+      <h1>${esc(c.h1)}</h1>
+      <p>${esc(c.intro)}</p>
+    </section>
+
+    <section class="tx-card" aria-label="거래 요약">
+      <div class="tx-row"><span>${esc(c.tx.amount)}</span><b>${esc(won(a.amount))}</b></div>
+      <div class="tx-row"><span>${esc(c.tx.route)}</span><b>${esc(localizedChannel(a.channel, a.language))} -> ${esc(a.counterparty_country)}</b></div>
+      <div class="tx-row"><span>${esc(c.tx.ip)}</span><b>${esc(a.ip_country)}</b></div>
+      <div class="tx-row"><span>${esc(c.tx.device)}</span><b>${a.is_new_device ? esc(c.tx.newDevice) : esc(c.tx.knownDevice)}</b></div>
+    </section>
+
+    ${renderConversation(a)}
+
+    ${latest ? `
+      <section class="result">
+        ${esc(c.result)}
+      </section>
+    ` : ''}
+  `;
+  renderComposer(a);
+}
+
+function renderComposer(a) {
+  const disabled = !a.verification;
+  const samples = replySamples(a.language);
+  $('composer').hidden = false;
+  $('composer').innerHTML = disabled ? `
+    <button class="send" type="button" onclick="reloadAlert()">${esc(copyFor(a.language).reload)}</button>
+  ` : `
+    <div class="chips">
+      ${samples.map(s => `<button type="button" onclick='setReply(${JSON.stringify(s.text)})'>${esc(s.label)}</button>`).join('')}
+    </div>
+    <textarea id="reply" placeholder="${esc(copyFor(a.language).placeholder)}"></textarea>
+    <button class="send" id="send" type="button" onclick="submitReply()">${esc(copyFor(a.language).send)}</button>
+  `;
+}
+
+function schedulePendingRefresh(a) {
+  if (a.verification) {
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+    return;
+  }
+  if (!pendingTimer) {
+    pendingTimer = setTimeout(async () => {
+      pendingTimer = null;
+      await reloadAlert();
+    }, 1500);
+  }
+}
+
+function setReply(text) {
+  const el = $('reply');
+  if (el) {
+    el.value = text;
+    el.focus();
+  }
+}
+
+async function reloadAlert() {
+  try {
+    currentAlert = await jget('/alert/' + encodeURIComponent(alertId));
+    renderScreen(currentAlert);
+  } catch (e) {
+    renderError(e);
+  }
+}
+
+async function submitReply() {
+  if (isSending) return;
+  const el = $('reply');
+  const reply = el ? el.value.trim() : '';
+  if (!reply) {
+    if (el) el.focus();
+    return;
+  }
+  isSending = true;
+  const btn = $('send');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '전송 중...';
+  }
+  try {
+    await jpost('/alert/' + encodeURIComponent(alertId) + '/verification/reply', {
+      customer_reply: reply,
+      channel: 'customer_mobile_simulator'
+    });
+    await reloadAlert();
+  } catch (e) {
+    renderError(e);
+  } finally {
+    isSending = false;
+  }
+}
+
+function renderError(e) {
+  $('case-label').textContent = '연결 오류';
+  $('screen').innerHTML = `
+    <div class="empty">
+      <div>
+        <b>고객 확인 화면을 열 수 없습니다.</b><br>
+        <span>${esc(e.message || String(e))}</span>
+      </div>
+    </div>
+  `;
+  $('composer').hidden = true;
+}
+
+async function boot() {
+  if (!DEBUG_VIEW) {
+    $('stage').classList.add('customer-only');
+  }
+  if (!alertId || alertId === 'customer') {
+    renderError(new Error('케이스 ID가 없습니다.'));
+    return;
+  }
+  await reloadAlert();
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상담사 워크스페이스</title>
+<style>
+  :root {
+    --bg: #f3f7fb;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #d9e2ef;
+    --blue: #0056c6;
+    --soft-blue: #eaf3ff;
+    --red: #dc2626;
+    --amber: #d97706;
+    --green: #059669;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    color: var(--ink);
+    background:
+      linear-gradient(180deg, rgba(0, 86, 198, 0.12), transparent 260px),
+      var(--bg);
+  }
+  .top {
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .workspace-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 10px;
+    background: #eef4fc;
+    border: 1px solid var(--line);
+  }
+  .workspace-tab {
+    border: 0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .workspace-tab.active {
+    background: var(--blue);
+    color: #ffffff;
+    box-shadow: 0 6px 18px rgba(0, 86, 198, 0.18);
+  }
+  .mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--blue);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+  }
+  h1 { margin: 0; font-size: 18px; letter-spacing: 0; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .workspace {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 18px 20px 28px;
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .phone-column {
+    position: sticky;
+    top: 76px;
+    align-self: start;
+  }
+  .phone-shell {
+    background: #0f172a;
+    border-radius: 30px;
+    padding: 10px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  }
+  .phone-frame {
+    width: 100%;
+    height: calc(100vh - 116px);
+    min-height: 680px;
+    border: 0;
+    border-radius: 22px;
+    background: #f8fafc;
+    display: block;
+  }
+  .pc-work {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 18px;
+    min-width: 0;
+  }
+  .card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+  .panel { padding: 16px; }
+  .panel h2, .file h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    letter-spacing: 0;
+  }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; font-size: 13px; }
+  .kv span { color: var(--muted); }
+  .kv b { text-align: right; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid var(--line);
+    background: #f8fafc;
+  }
+  .badge.red { color: var(--red); background: #fef2f2; border-color: #fecaca; }
+  .badge.amber { color: var(--amber); background: #fffbeb; border-color: #fde68a; }
+  .badge.green { color: var(--green); background: #ecfdf5; border-color: #bbf7d0; }
+  .actions { display: grid; gap: 8px; margin-top: 14px; }
+  .reply-box {
+    border-top: 1px solid var(--line);
+    margin-top: 14px;
+    padding-top: 14px;
+    display: grid;
+    gap: 8px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 112px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    font: inherit;
+    line-height: 1.5;
+  }
+  textarea:focus {
+    outline: 2px solid rgba(0, 86, 198, 0.18);
+    border-color: #7fb1f2;
+  }
+  button, a.button {
+    appearance: none;
+    border: 1px solid #bfd3ee;
+    background: #ffffff;
+    color: #0f3f8f;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+  }
+  button.primary, a.button.primary {
+    background: var(--blue);
+    color: #ffffff;
+    border-color: var(--blue);
+  }
+  .file { padding: 0; overflow: hidden; }
+  .file-head {
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #0f3f8f, #0056c6);
+    color: #ffffff;
+  }
+  .file-head h2 { color: #ffffff; margin: 0 0 6px; font-size: 20px; }
+  .file-head p { margin: 0; color: rgba(255,255,255,.82); font-size: 13px; line-height: 1.55; }
+  .file-body { padding: 20px; display: grid; gap: 14px; }
+  .section {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    background: #ffffff;
+  }
+  .section.why {
+    background: var(--soft-blue);
+    border-color: #bdd7fb;
+  }
+  .section h3 { margin: 0 0 8px; font-size: 14px; }
+  .section p, .section li { font-size: 13px; line-height: 1.65; color: #334155; }
+  .section p { margin: 0; }
+  ul { margin: 0; padding-left: 18px; }
+  .muted { color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .timeline { display: grid; gap: 8px; }
+  .event {
+    border-left: 3px solid #bfdbfe;
+    padding-left: 10px;
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.5;
+  }
+  .empty {
+    min-height: 360px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    text-align: center;
+    padding: 24px;
+  }
+  @media (max-width: 900px) {
+    .workspace { grid-template-columns: 1fr; padding: 16px; }
+    .phone-column { position: static; }
+    .phone-frame { height: 720px; min-height: 620px; }
+    .pc-work { grid-template-columns: 1fr; }
+    .top { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="mark">JB</div>
+      <div>
+        <h1>상담사 PC 워크스페이스</h1>
+        <div class="sub" id="case-sub">케이스 연결 중</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="workspace-tabs" aria-label="업무 화면 전환">
+        <button class="workspace-tab" type="button" onclick="goAnalystTab()">분석가 콘솔</button>
+        <button class="workspace-tab active" type="button">상담사 PC</button>
+      </div>
+      <span class="badge" id="status-badge">대기</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="phone-column" aria-label="고객 스마트폰 화면">
+      <div class="phone-shell">
+        <iframe class="phone-frame" id="customer-frame" title="고객 스마트폰 본인확인 화면"></iframe>
+      </div>
+    </section>
+
+    <section class="pc-work" aria-label="상담사 PC 업무 화면">
+      <aside class="card panel">
+        <h2>상담 진행</h2>
+        <div class="kv" id="case-kv"></div>
+        <div class="actions">
+          <button type="button" onclick="reloadAll()">인수인계 파일 새로고침</button>
+        </div>
+        <div class="reply-box">
+          <h2>고객 답변 기록</h2>
+          <textarea id="reply" placeholder="상담사가 고객에게 들은 답변을 입력합니다. 예: 고객이 본인거래라고 답함 / 모르는 거래라고 함 / 누가 시켰고 은행에 말하지 말라고 함"></textarea>
+          <button class="primary" type="button" id="reply-btn" onclick="submitReply()">답변 분석 및 기록</button>
+        </div>
+        <p class="muted" style="margin-top:12px;">
+          왼쪽은 고객이 보는 모국어 확인 화면입니다. 오른쪽에서 상담사는 인수인계 파일을 확인하고,
+          고객 답변을 기록합니다.
+        </p>
+      </aside>
+
+      <section class="card file" id="handoff">
+        <div class="empty">AI 인수인계 파일을 생성하는 중입니다.</div>
+      </section>
+    </section>
+  </main>
+
+<script>
+const $ = id => document.getElementById(id);
+const alertId = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+let currentAlert = null;
+let currentReport = null;
+
+const customerFrame = $('customer-frame');
+if (customerFrame && alertId && alertId !== 'counselor') {
+  customerFrame.src = '/customer/' + encodeURIComponent(alertId);
+}
+
+const STATUS_KO = {
+  open: "대기",
+  verifying: "본인확인중",
+  escalated: "분석가 확인중",
+  approved: "정상승인",
+  blocked: "차단확정",
+  holding: "보류유지",
+  reported: "STR 보고"
+};
+const ACTION_KO = { allow: "정상승인", review: "추가 검토", soft_block: "차단 전 보류" };
+const CHANNEL_KO = { remittance: "해외 송금", domestic: "국내 이체", atm: "ATM 인출" };
+const LANG_KO = { vi: "베트남어", ne: "네팔어", ko: "한국어", en: "영어" };
+const GENERATED_BY_KO = {
+  template: "내장 템플릿 폴백",
+  live_claude: "Claude 실시간 생성",
+  cached_claude: "Claude 사전 생성 결과",
+  live_openai: "OpenAI 호환 모델 실시간 생성"
+};
+const RULE_KO = {
+  corridor_mismatch: "평소 송금 경로와 다른 수취국",
+  exit_drawdown: "체류 만료 전후의 큰 잔액 인출",
+  new_device_high_amount: "새 기기에서 고액 거래",
+  rapid_passthrough: "단시간 내 빠른 연속 이체",
+  night_remittance: "심야 해외송금",
+  residency_overstayed: "체류기간 만료 이후 거래",
+  exit_takeover_boost: "출국기 계좌양도 위험 가중"
+};
+const HYPOTHESIS_KO = {
+  exit_period_account_takeover: "출국기 계좌양도 또는 계좌 탈취 가능성",
+  phishing_or_remote_control: "피싱·원격제어에 의한 송금 가능성",
+  baseline_anomaly: "평소 정상 거래 분포에서 벗어난 거래 가능성",
+  unusual_transaction: "추가 확인이 필요한 비정상 거래 가능성"
+};
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function won(v) { return Number(v || 0).toLocaleString('ko-KR') + '원'; }
+async function jget(path) {
+  const r = await fetch(path);
+  const out = await r.json();
+  if (!r.ok || out.error) throw new Error(out.error || r.statusText);
+  return out;
+}
+async function jpost(path, body) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const out = await r.json();
+  if (!r.ok || out.error) throw new Error(out.error || r.statusText);
+  return out;
+}
+function generatedByKo(v) { return GENERATED_BY_KO[v] || v || '-'; }
+function actionKo(v) { return ACTION_KO[v] || v || '-'; }
+function channelKo(v) { return CHANNEL_KO[v] || v || '-'; }
+function statusKo(v) { return STATUS_KO[v] || v || '-'; }
+function ruleKo(v) { return RULE_KO[v] || v || ''; }
+function hypothesisKo(v) { return HYPOTHESIS_KO[v] || v || '추가 확인 필요'; }
+function goAnalystTab() {
+  location.href = '/?case=' + encodeURIComponent(alertId);
+}
+function humanizeCodeText(value) {
+  return String(value ?? '')
+    .replace(/\bremittance\b/g, '해외 송금')
+    .replace(/\bdomestic\b/g, '국내 이체')
+    .replace(/\batm\b/g, 'ATM 인출')
+    .replace(/\bsoft_block\b/g, '차단 전 보류')
+    .replace(/\breview\b/g, '추가 검토')
+    .replace(/\ballow\b/g, '정상 승인')
+    .replace(/\bTrue\b/g, '예')
+    .replace(/\bFalse\b/g, '아니오')
+    .replace(/action=/g, '판정=')
+    .replace(/\bamount_log\b/g, '이체 금액')
+    .replace(/\bbalance_drawdown_ratio\b/g, '잔액 인출 비율')
+    .replace(/\btx_velocity_24h\b/g, '최근 24시간 거래 수')
+    .replace(/\bis_new_device\b/g, '신규기기 여부')
+    .replace(/\bcorridor_match\b/g, '평소 송금 경로 일치 여부')
+    .replace(/\bdays_to_residency_end\b/g, '체류 만료 잔여일')
+    .replace(/\bhour\b/g, '거래 발생 시각')
+    .replace(/\bcorridor_mismatch\b/g, '평소 송금 경로와 다른 수취국')
+    .replace(/\bexit_drawdown\b/g, '체류 만료 전후의 큰 잔액 인출')
+    .replace(/\bnew_device_high_amount\b/g, '새 기기 고액 거래')
+    .replace(/\brapid_passthrough\b/g, '단시간 연속 이체')
+    .replace(/\bnight_remittance\b/g, '심야 해외송금')
+    .replace(/\bexit_takeover_boost\b/g, '출국기 계좌양도 위험 가중');
+}
+
+function evidenceMap(report) {
+  const m = {};
+  (report && report.key_evidence || []).forEach(e => { if (e && e.id) m[e.id] = e; });
+  return m;
+}
+function evidenceText(report, ids) {
+  const m = evidenceMap(report);
+  return (ids || []).map(id => {
+    const e = m[id];
+    if (!e) return '';
+    return humanizeCodeText(`${e.title}: ${e.fact}`);
+  }).filter(Boolean).join(' / ');
+}
+
+function verificationReason(a, report) {
+  const lang = LANG_KO[a.language] || a.language || '모국어';
+  const rules = (a.triggered_rules || []).map(ruleKo).filter(Boolean);
+  const base = [
+    `${actionKo(a.action)} 대상으로 분류되어 송금 실행 전 추가 확인이 필요합니다.`,
+    `${lang} 고객이므로 한국어 안내만으로는 본인 의사·강요 여부 확인이 불충분할 수 있습니다.`,
+    `상담사는 고객이 이해 가능한 ${lang} 확인 문구로 본인거래 여부, 수취인 인지 여부, 타인의 지시 여부를 확인합니다.`
+  ];
+  if (rules.length) {
+    base.unshift(`탐지 신호: ${rules.join(', ')}.`);
+  }
+  if (report && report.recommended_next_action === 'hold_and_native_language_verify') {
+    base.push('AI 조사관도 보류 유지 후 모국어 본인확인을 후속 확인 절차로 제시했습니다.');
+  }
+  return base;
+}
+
+function renderSide(a) {
+  $('case-sub').textContent = `${a.id} · ${a.customer_id || '-'} · ${a.segment || '-'}`;
+  const badge = $('status-badge');
+  badge.textContent = statusKo(a.status);
+  badge.className = 'badge ' + (a.status === 'holding' || a.status === 'blocked' ? 'red' : (a.status === 'verifying' ? 'amber' : ''));
+  $('case-kv').innerHTML = `
+    <span>케이스</span><b>${esc(a.id)}</b>
+    <span>고객/세그먼트</span><b>${esc(a.customer_id)} · ${esc(a.segment)}</b>
+    <span>거래금액</span><b>${esc(won(a.amount))}</b>
+    <span>거래경로</span><b>${esc(channelKo(a.channel))} → ${esc(a.counterparty_country)}</b>
+    <span>상담 언어</span><b>${esc(LANG_KO[a.language] || a.language)}</b>
+    <span>상태</span><b>${esc(statusKo(a.status))}</b>
+  `;
+}
+
+function renderFile(a, report) {
+  const why = verificationReason(a, report);
+  const hypotheses = report.hypotheses || [];
+  const questions = report.verification_questions || [];
+  const evidence = report.key_evidence || [];
+  const turns = a.verification_turns || [];
+
+  $('handoff').innerHTML = `
+    <div class="file-head">
+      <h2>Claude 조사관 인수인계 파일</h2>
+      <p>
+        모국어 본인확인 상담사가 바로 읽고 통화/채팅을 시작할 수 있도록 만든 케이스 파일입니다.
+        현재 생성 방식: <b>${esc(generatedByKo(report.generated_by))}</b>
+      </p>
+    </div>
+    <div class="file-body">
+      <section class="section why">
+        <h3>왜 모국어 본인확인으로 라우팅했나</h3>
+        <ul>${why.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      </section>
+
+      <section class="section">
+        <h3>상담사가 고객에게 확인할 핵심 질문</h3>
+        <ul>
+          ${questions.map(q => `
+            <li>
+              ${esc(q.question)}
+              ${q.purpose ? `<br><span class="muted">목적: ${esc(q.purpose)}</span>` : ''}
+              ${evidenceText(report, q.evidence_ids) ? `<br><span class="muted">근거: ${esc(evidenceText(report, q.evidence_ids))}</span>` : ''}
+            </li>
+          `).join('') || '<li>거래 목적과 본인 요청 여부를 확인하세요.</li>'}
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>분석가가 넘긴 주요 근거</h3>
+        <ul>
+          ${evidence.slice(0, 7).map(e => `<li><b>${esc(humanizeCodeText(e.title))}</b>: ${esc(humanizeCodeText(e.fact))}</li>`).join('')}
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>확인할 위험 가설</h3>
+        <ul>
+          ${hypotheses.map(h => `
+            <li>
+              ${esc(hypothesisKo(h.name))}
+              ${evidenceText(report, h.supporting_evidence_ids) ? `<br><span class="muted">근거: ${esc(evidenceText(report, h.supporting_evidence_ids))}</span>` : ''}
+            </li>
+          `).join('') || '<li>비정상 거래 여부를 추가 확인합니다.</li>'}
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>고객 답변/처리 이력</h3>
+        <div class="timeline">
+          ${turns.map(t => `<div class="event"><b>고객 답변</b>: ${esc(t.customer_reply)}<br><span class="muted">요약: ${esc(t.analyst_summary_ko || '-')}</span></div>`).join('')}
+          ${(a.activity || []).map(e => `<div class="event"><b>${esc(e.role === 'agent' ? '상담사' : e.role === 'analyst' ? '분석가' : '담당자')}</b> · ${esc(e.note || '처리 기록')}<br><span class="muted">${esc((e.at || '').slice(0, 16).replace('T', ' '))}</span></div>`).join('')}
+          ${!turns.length && !(a.activity || []).length ? '<div class="event">아직 고객 답변 기록이 없습니다.</div>' : ''}
+        </div>
+      </section>
+
+      <p class="muted">
+        이 파일은 상담 보조 문서입니다. AI는 승인·차단을 결정하지 않으며, 최종 처리는 권한 있는 분석가가 합니다.
+      </p>
+    </div>
+  `;
+}
+
+async function reloadAll() {
+  try {
+    currentAlert = await jget('/alert/' + encodeURIComponent(alertId));
+    renderSide(currentAlert);
+    currentReport = await jpost('/alert/' + encodeURIComponent(alertId) + '/investigate', {});
+    currentAlert = await jget('/alert/' + encodeURIComponent(alertId));
+    renderSide(currentAlert);
+    renderFile(currentAlert, currentReport);
+  } catch (e) {
+    $('handoff').innerHTML = `<div class="empty"><b>인수인계 파일을 불러오지 못했습니다.</b><br>${esc(e.message || String(e))}</div>`;
+  }
+}
+
+let isSubmitting = false;
+async function submitReply() {
+  if (isSubmitting) return;
+  const el = $('reply');
+  const reply = el ? el.value.trim() : '';
+  if (!reply) {
+    if (el) el.focus();
+    return;
+  }
+  isSubmitting = true;
+  const btn = $('reply-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '분석 중...';
+  }
+  try {
+    await jpost('/alert/' + encodeURIComponent(alertId) + '/verification/reply', {
+      customer_reply: reply,
+      channel: 'counselor_workspace'
+    });
+    if (el) el.value = '';
+    await reloadAll();
+  } catch (e) {
+    alert('고객 답변을 기록하지 못했습니다: ' + (e.message || String(e)));
+  } finally {
+    isSubmitting = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '답변 분석 및 기록';
+    }
+  }
+}
+
+async function boot() {
+  if (!alertId || alertId === 'counselor') {
+    $('handoff').innerHTML = '<div class="empty">케이스 ID가 없습니다.</div>';
+    return;
+  }
+  await reloadAll();
+  setInterval(async () => {
+    try {
+      currentAlert = await jget('/alert/' + encodeURIComponent(alertId));
+      renderSide(currentAlert);
+      if (currentReport) renderFile(currentAlert, currentReport);
+    } catch (_) {}
+  }, 3000);
+}
+
+boot();
+</script>
+</body>
+</html>

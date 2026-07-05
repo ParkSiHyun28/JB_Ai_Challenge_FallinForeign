@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fraud-guard · 실제 AI 에이전트 콘솔</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --bd:#2a2f3a; --bd2:#3a4150;
+    --tx:#e6e9ef; --tx2:#a6adbb; --tx3:#6b7280; --acc:#5b9dff; --accbg:#132844;
+    --danger:#ff6b6b; --dangerbg:#3a1c1e; --warn:#e2a03f; --warnbg:#38301c;
+    --ok:#3ecf8e; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    font-size:14px;line-height:1.55}
+  header{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;
+    align-items:baseline;gap:12px;flex-wrap:wrap}
+  header h1{font-size:17px;font-weight:600;margin:0}
+  header .sub{color:var(--tx3);font-size:12px}
+  .note{margin:12px 20px 0;padding:8px 12px;background:var(--accbg);border:1px solid #23456e;
+    border-radius:8px;color:var(--tx2);font-size:12.5px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 20px}
+  select{background:var(--card2);color:var(--tx);border:1px solid var(--bd2);border-radius:8px;
+    padding:8px 10px;font-size:13px;min-width:280px;max-width:60vw}
+  button{background:var(--acc);color:#06122a;border:0;border-radius:8px;padding:9px 14px;
+    font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--card2);color:var(--tx);border:1px solid var(--bd2)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:6px 20px 40px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;min-height:120px}
+  .card h2{font-size:14.5px;margin:0 0 2px;font-weight:600}
+  .card .role{color:var(--tx3);font-size:11.5px;margin-bottom:12px}
+  .lbl{font-size:11px;color:var(--tx3);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+  .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd2);
+    color:var(--tx2);margin:0 4px 4px 0}
+  .badge{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+  .bd-danger{background:var(--dangerbg);color:#ffb4b4;border:1px solid #5a2b2e}
+  .bd-warn{background:var(--warnbg);color:#f0c579;border:1px solid #5a4a24}
+  .bd-neutral{background:var(--card2);color:var(--tx2);border:1px solid var(--bd2)}
+  .trace{list-style:none;margin:0;padding:0;border-left:2px solid var(--bd2);margin-left:5px}
+  .trace li{position:relative;padding:4px 0 4px 12px;font-family:var(--mono);font-size:12px;color:var(--tx2)}
+  .trace li::before{content:"";position:absolute;left:-6px;top:9px;width:8px;height:8px;border-radius:50%;
+    background:var(--bd2)}
+  .trace li.done::before{background:var(--ok)}
+  .trace .t{color:var(--tx3)}
+  .q{border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--card2)}
+  .q .qp{font-size:11.5px;color:var(--acc)}
+  .q .qv{font-size:12.5px;color:var(--tx2);margin-top:2px}
+  .q .qe{font-family:var(--mono);font-size:10.5px;color:var(--tx3);margin-top:3px}
+  .hyp{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;
+    border-bottom:1px dashed var(--bd);font-size:12.5px}
+  .hyp code{font-family:var(--mono);font-size:12px;color:var(--tx2)}
+  .chat{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+  .bub{max-width:88%;padding:7px 10px;border-radius:12px;font-size:12.5px;line-height:1.45}
+  .agent{align-self:flex-start;background:var(--accbg);border:1px solid #23456e;border-bottom-left-radius:3px}
+  .cust{align-self:flex-end;background:var(--card2);border:1px solid var(--bd2);border-bottom-right-radius:3px}
+  .who{font-size:10px;color:var(--tx3);margin-bottom:2px}
+  .alert{display:flex;gap:8px;align-items:flex-start;background:var(--dangerbg);border:1px solid #5a2b2e;
+    border-radius:8px;padding:10px 12px;margin:12px 0}
+  .kv{display:flex;gap:8px;font-size:12.5px;margin:3px 0}
+  .kv b{color:var(--tx3);font-weight:500;min-width:110px}
+  ul.ck{list-style:none;margin:4px 0 0;padding:0}
+  ul.ck li{font-size:12px;color:var(--tx2);padding:3px 0 3px 16px;position:relative}
+  ul.ck li::before{content:"✓";position:absolute;left:0;color:var(--acc)}
+  .muted{color:var(--tx3);font-size:12px}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--bd2);border-top-color:var(--acc);
+    border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .foot{padding:0 20px 30px;color:var(--tx3);font-size:11.5px}
+  code.mono{font-family:var(--mono);font-size:12px;color:var(--tx2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>fraud-guard · 실제 AI 에이전트 콘솔</h1>
+  <span class="sub">Claude Opus 4.8 · tool-calling / 다회전 대화 · 게이트웨이 연동</span>
+</header>
+<div class="note">
+  이 콘솔은 <b>진짜 Claude API</b>를 호출합니다. LLM은 근거·대화·요약만 하고
+  <b>승인/차단 판정은 사람</b>이 합니다. 본인확인은 <b>시뮬레이션 고객</b>(원격제어 피싱 피해자)과의
+  대화입니다 — 실제 채널 발송은 아직 미연동입니다.
+</div>
+<div class="bar">
+  <select id="alert"><option>알림 불러오는 중…</option></select>
+  <button id="reload" class="ghost">새로고침</button>
+  <button id="runInv">🔎 조사 에이전트 실행</button>
+  <button id="runVer">💬 본인확인 에이전트 실행</button>
+</div>
+<div class="grid">
+  <div class="card" id="invCard">
+    <h2>조사 에이전트</h2>
+    <div class="role">investigator_agent · read-only 도구를 스스로 호출</div>
+    <div id="invBody" class="muted">알림을 고르고 “조사 에이전트 실행”을 누르세요.</div>
+  </div>
+  <div class="card" id="verCard">
+    <h2>본인확인 에이전트</h2>
+    <div class="role">verification_agent · 고객과 모국어 다회전 대화 (시뮬)</div>
+    <div id="verBody" class="muted">알림을 고르고 “본인확인 에이전트 실행”을 누르세요.</div>
+  </div>
+</div>
+<div class="foot">엔드포인트: <code class="mono">POST /alert/{id}/agent/investigate</code> ·
+  <code class="mono">POST /alert/{id}/agent/verify</code> — 실행에 10~40초 걸릴 수 있습니다(실제 추론).</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s==null?"":String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const badge = (t,cls) => `<span class="badge ${cls}">${esc(t)}</span>`;
+const clsFor = v => ({high:'bd-danger',medium:'bd-warn',low:'bd-neutral'}[v]||'bd-neutral');
+
+async function loadAlerts(){
+  const sel = $('#alert');
+  sel.innerHTML = '<option>불러오는 중…</option>';
+  try{
+    const r = await fetch('/alerts'); const items = await r.json();
+    if(!items.length){ sel.innerHTML='<option value="">알림 없음</option>'; return; }
+    sel.innerHTML = items.map(a=>{
+      const t = `${a.id} · ${a.segment||''} · ${a.action} · ${a.counterparty_country||''} ${Math.round(a.amount||0).toLocaleString()}원`;
+      return `<option value="${a.id}">${esc(t)}</option>`;
+    }).join('');
+  }catch(e){ sel.innerHTML=`<option value="">로드 실패: ${esc(e.message)}</option>`; }
+}
+
+function busy(btn,on){ btn.disabled=on; }
+
+async function runInvestigate(){
+  const id = $('#alert').value; if(!id) return;
+  const body=$('#invBody'), btn=$('#runInv');
+  body.innerHTML = '<span class="spin"></span>조사 에이전트가 도구를 호출하며 조사 중…';
+  busy(btn,true);
+  try{
+    const r = await fetch(`/alert/${id}/agent/investigate`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d = await r.json();
+    if(d.error){ body.innerHTML=`<div class="alert">⚠️ ${esc(d.error)}<br><span class="muted">${esc(d.hint||'')}</span></div>`; return; }
+    renderInvestigation(d);
+  }catch(e){ body.innerHTML=`<div class="alert">⚠️ ${esc(e.message)}</div>`; }
+  finally{ busy(btn,false); }
+}
+
+function renderInvestigation(d){
+  const s = d.submitted||{};
+  const trace = (d.tool_calls||[]).map((c,i,arr)=>{
+    const done = c.name==='submit_investigation';
+    const arg = c.input && c.input.rule_name ? ' · '+esc(c.input.rule_name) : '';
+    return `<li class="${done?'done':''}"><span class="t">t${c.turn}</span> · ${esc(c.name)}${arg}</li>`;
+  }).join('');
+  const qs = (s.verification_questions||[]).map(q=>`
+    <div class="q"><div class="qp">${esc(q.purpose)}</div>
+      <div class="qv">${esc(q.question)}</div>
+      <div class="qe">${(q.evidence_ids||[]).map(esc).join(' · ')}</div></div>`).join('');
+  const hy = (s.llm_suggested_hypotheses||[]).map(h=>`
+    <div class="hyp"><code>${esc(h.name)}</code>${badge(h.confidence,clsFor(h.confidence))}</div>`).join('');
+  $('#invBody').innerHTML = `
+    <div class="muted">turns=${d.turns} · stop=${esc(d.stop_reason)} · ${esc(d.model)}</div>
+    <div class="lbl">도구 호출 궤적 (스스로 선택)</div>
+    <ul class="trace">${trace||'<li>(없음)</li>'}</ul>
+    <div class="lbl">모국어 확인질문 (근거 인용)</div>${qs||'<div class="muted">(없음)</div>'}
+    ${hy?`<div class="lbl">가설 (비권위 · 사기 단정 안 함)</div>${hy}`:''}
+    ${s.recommended_next_check?`<div class="lbl">다음 점검</div><div class="muted">${esc(s.recommended_next_check)}</div>`:''}
+    <div class="lbl">확신도</div>${badge(s.confidence||'low',clsFor(s.confidence))}`;
+}
+
+async function runVerify(){
+  const id = $('#alert').value; if(!id) return;
+  const body=$('#verBody'), btn=$('#runVer');
+  body.innerHTML = '<span class="spin"></span>에이전트가 고객(시뮬)과 모국어로 대화 중…';
+  busy(btn,true);
+  try{
+    const r = await fetch(`/alert/${id}/agent/verify`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d = await r.json();
+    if(d.error){ body.innerHTML=`<div class="alert">⚠️ ${esc(d.error)}<br><span class="muted">${esc(d.hint||'')}</span></div>`; return; }
+    renderVerification(d);
+  }catch(e){ body.innerHTML=`<div class="alert">⚠️ ${esc(e.message)}</div>`; }
+  finally{ busy(btn,false); }
+}
+
+function renderVerification(d){
+  const c = d.conclusion||{};
+  const chat = (d.transcript||[]).map(t=>{
+    const who = t.speaker==='agent'?'에이전트':'고객(시뮬)';
+    const cl = t.speaker==='agent'?'agent':'cust';
+    return `<div class="bub ${cl}"><div class="who">${who}</div>${esc(t.text)}</div>`;
+  }).join('');
+  const esc_ns = c.next_state||'';
+  const danger = /escalation/.test(esc_ns);
+  const ck = (c.operator_checklist||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+  $('#verBody').innerHTML = `
+    <div class="muted">turns=${d.customer_turns} · stop=${esc(d.stop_reason)} · ${esc(d.model)} · 시뮬 고객</div>
+    <div class="chat">${chat||'<div class="muted">(대화 없음)</div>'}</div>
+    ${c.detected_intent==='coercion_hint'||danger?
+      `<div class="alert">⚠️ <div><b>위험 신호 감지</b><br><span class="muted">승인 유도 대신 보호 상신</span></div></div>`:''}
+    <div class="lbl">분석가 인계 (사람이 최종 판정)</div>
+    <div class="kv"><b>detected_intent</b><code class="mono">${esc(c.detected_intent)}</code></div>
+    <div class="kv"><b>next_state</b>${badge(esc_ns,danger?'bd-danger':'bd-neutral')} <span class="muted">라우팅 후보</span></div>
+    <div class="kv"><b>confidence</b>${badge(c.confidence||'low',clsFor(c.confidence))}</div>
+    ${c.analyst_summary_ko?`<div class="lbl">요약</div><div class="muted">${esc(c.analyst_summary_ko)}</div>`:''}
+    ${ck?`<div class="lbl">점검 항목</div><ul class="ck">${ck}</ul>`:''}`;
+}
+
+$('#reload').onclick = loadAlerts;
+$('#runInv').onclick = runInvestigate;
+$('#runVer').onclick = runVerify;
+loadAlerts();
+</script>
+</body>
+</html>
